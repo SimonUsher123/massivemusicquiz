@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beukquiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Figtree:wght@400;600;800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: quiz-show podium — big countdown stage left, live scoreboard right; stacks on phones. Single dark "studio" look by choice. */
+:root{
+  --bg:#1a1022; --panel:#251733; --line:#3a2650; --fg:#f4ecf8; --muted:#b5a3c4;
+  --accent:#ffb02e; --hot:#ff5a7a; --ok:#4fd39a; --half:#ffd36b;
+  --display:"Bungee",Impact,system-ui,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px}
+body{min-height:100vh;padding-block:20px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,5vw,44px);margin:0;letter-spacing:.02em;color:var(--accent)}
+h1 span{color:var(--hot)}
+.tag{color:var(--muted);font-size:14px}
+.grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:20px}
+@media (max-width:760px){.grid{grid-template-columns:1fr}}
+.stage,.board{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;min-width:0}
+.meta{display:flex;justify-content:space-between;font-family:var(--mono);font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.clock{font-family:var(--display);font-size:clamp(64px,14vw,120px);line-height:1;text-align:center;margin:18px 0 6px;font-variant-numeric:tabular-nums}
+.clock.pause{color:var(--muted)}
+.bar{height:10px;background:var(--line);border-radius:6px;overflow:hidden}
+.bar>i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--hot),var(--accent));transform-origin:left;transition:transform .2s linear}
+.status{display:flex;gap:8px;justify-content:center;margin:18px 0}
+.chip{font-weight:800;font-size:14px;padding:6px 14px;border-radius:999px;border:2px solid var(--line);color:var(--muted)}
+.chip.ok{border-color:var(--ok);color:var(--ok)}
+.cup{font-family:var(--display);color:var(--bg);background:var(--accent);border-radius:8px 8px 14px 14px;padding:2px 9px;font-size:15px}
+form{display:flex;gap:8px}
+input[type=text]{flex:1;min-width:0;font:inherit;font-size:20px;padding:14px 16px;border-radius:10px;border:2px solid var(--line);background:var(--bg);color:var(--fg)}
+input[type=text]:focus{outline:none;border-color:var(--accent)}
+input:disabled{opacity:.5}
+button{font:inherit;font-weight:800;font-size:16px;padding:14px 20px;border-radius:10px;border:0;background:var(--accent);color:var(--bg);cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--hot);outline-offset:2px}
+button.ghost{background:transparent;color:var(--fg);border:2px solid var(--line)}
+.typed{min-height:24px;margin-top:10px;font-family:var(--mono);font-size:13px;color:var(--muted);word-break:break-word}
+.reveal{margin-top:16px;padding:14px;border-radius:10px;background:var(--bg);text-align:center}
+.reveal b{display:block;font-size:22px}
+.feed{margin-top:14px;font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:4px;max-height:110px;overflow:hidden}
+.feed div:first-child{color:var(--fg)}
+.board h2{font-family:var(--display);font-weight:400;font-size:18px;margin:0 0 12px;letter-spacing:.04em}
+.row{display:grid;grid-template-columns:22px minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid var(--line)}
+.row.me{background:rgba(255,176,46,.1);border-radius:8px}
+.row .pos{font-family:var(--mono);color:var(--muted);font-size:13px}
+.row .name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .pts{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:16px}
+.row .dots{display:flex;gap:3px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.dot.half{background:var(--half)} .dot.full{background:var(--ok)}
+.cups{font-family:var(--mono);font-size:12px;color:var(--accent);white-space:nowrap}
+.center{text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center;padding:24px 0}
+.center p{max-width:52ch;color:var(--muted);margin:0;line-height:1.5}
+.err{color:var(--hot)}
+.vol{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px}
+@media (prefers-reduced-motion:reduce){.bar>i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>BEUK<span>QUIZ</span></h1>
+    <div class="vol"><label for="vol">Volume</label><input id="vol" type="range" min="0" max="1" step="0.05" value="0.8"></div>
+  </header>
+
+  <div class="grid">
+    <section class="stage" id="stage">
+      <div class="center" id="intro">
+        <p>10 nummers, 15 seconden per fragment, 5 seconden pauze. Typ artiest en titel in het vrije veld en druk op Enter. Woorden mogen in elke volgorde en in losse stukjes. Artiest ½ punt, titel ½ punt. De eerste drie met alles goed krijgen een beker.</p>
+        <button id="startBtn">Fragmenten laden en starten</button>
+        <p id="loadMsg"></p>
+      </div>
+
+      <div id="game" hidden>
+        <div class="meta"><span id="songNo">Nummer 1 / 10</span><span id="phase">Luisteren</span></div>
+        <div class="clock" id="clock">15</div>
+        <div class="bar"><i id="barFill"></i></div>
+        <div class="status">
+          <span class="chip" id="chipA">Artiest</span>
+          <span class="chip" id="chipT">Titel</span>
+          <span id="myCup"></span>
+        </div>
+        <form id="form" autocomplete="off">
+          <input type="text" id="guess" placeholder="Typ en druk op Enter" aria-label="Je antwoord">
+          <button type="submit">Raad</button>
+        </form>
+        <div class="typed" id="typed"></div>
+        <div class="reveal" id="reveal" hidden></div>
+        <div class="feed" id="feed"></div>
+      </div>
+
+      <div class="center" id="end" hidden></div>
+    </section>
+
+    <aside class="board">
+      <h2>Stand</h2>
+      <div id="board"></div>
+    </aside>
+  </div>
+</div>
+
+<audio id="audio" preload="auto"></audio>
+
+<script>
+// ---------- Nummers (antwoorden) ----------
+// artists: lijst van artiesten, elk een lijst woorden die nodig zijn. "a|b" = alternatieven.
+const SONGS = [
+  {q:"Ariana Grande 7 rings", artists:[["ariana","grande"]], title:["7|seven","rings"], show:"Ariana Grande – 7 rings"},
+  {q:"Queen Bohemian Rhapsody", artists:[["queen"]], title:["bohemian","rhapsody"], show:"Queen – Bohemian Rhapsody"},
+  {q:"Daft Punk Get Lucky Pharrell", artists:[["daft","punk"],["pharrell","williams"]], title:["get","lucky"], show:"Daft Punk ft. Pharrell Williams – Get Lucky"},
+  {q:"Adele Rolling in the Deep", artists:[["adele"]], title:["rolling","in","deep"], show:"Adele – Rolling in the Deep"},
+  {q:"Avicii Wake Me Up", artists:[["avicii"]], title:["wake","me","up"], show:"Avicii – Wake Me Up"},
+  {q:"Dua Lipa Levitating", artists:[["dua","lipa"]], title:["levitating"], show:"Dua Lipa – Levitating"},
+  {q:"Mark Ronson Uptown Funk Bruno Mars", artists:[["mark","ronson"],["bruno","mars"]], title:["uptown","funk"], show:"Mark Ronson ft. Bruno Mars – Uptown Funk"},
+  {q:"Billie Eilish bad guy", artists:[["billie","eilish"]], title:["bad","guy"], show:"Billie Eilish – bad guy"},
+  {q:"Andre Hazes Zij gelooft in mij", artists:[["andre","hazes"]], title:["zij","gelooft","in","mij"], show:"André Hazes – Zij Gelooft In Mij"},
+  {q:"The Weeknd Blinding Lights", artists:[["weeknd"]], title:["blinding","lights"], show:"The Weeknd – Blinding Lights"},
+];
+const PLAY = 15, PAUSE = 5;
+
+// ---------- Spelers ----------
+const BOT_NAMES = [["DJ Henk",.85],["Ingrid",.7],["Muziekmeester",.6],["Kees",.5],["Fleur",.45],["Babbelaar",.35],["Opa Joop",.25]];
+let players = [{name:"Jij", me:true, total:0, round:0, cups:[0,0,0], hist:[], prevRank:null}]
+  .concat(BOT_NAMES.map(([n,s])=>({name:n, skill:s, total:0, round:0, cups:[0,0,0], hist:[], prevRank:null})));
+const me = players[0];
+
+// ---------- Tekst vergelijken ----------
+function words(s){return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9\s]/g," ").split(/\s+/).filter(Boolean)}
+function lev(a,b){const m=a.length,n=b.length,d=[];for(let i=0;i<=m;i++){d[i]=[i];for(let j=1;j<=n;j++)d[i][j]=i?0:j}
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++){const c=a[i-1]===b[j-1]?0:1;
+    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c);
+    if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])d[i][j]=Math.min(d[i][j],d[i-2][j-2]+1)}
+  return d[m][n]}
+function tol(len){return len<=3?0:len<=7?1:2}
+function hasWord(target, typed){
+  return target.split("|").some(alt=>[...typed].some(w=>lev(w,alt)<=tol(alt.length)));
+}
+function check(song, typed){
+  const a = song.artists.every(ws=>ws.every(w=>hasWord(w,typed)));
+  const t = song.title.every(w=>hasWord(w,typed));
+  return {a,t};
+}
+
+// ---------- JSONP voor iTunes previews ----------
+function jsonp(url){return new Promise((res,rej)=>{
+  const cb="cb"+Math.random().toString(36).slice(2), s=document.createElement("script");
+  const done=()=>{clearTimeout(to);delete window[cb];s.remove()};
+  const to=setTimeout(()=>{done();rej(new Error("timeout"))},9000);
+  window[cb]=d=>{done();res(d)}; s.onerror=()=>{done();rej(new Error("blocked"))};
+  s.src=url+"&callback="+cb; document.body.appendChild(s);
+})}
+async function loadPreviews(){
+  let ok=0;
+  await Promise.all(SONGS.map(async song=>{
+    try{
+      const d=await jsonp("https://itunes.apple.com/search?entity=song&limit=8&country=NL&term="+encodeURIComponent(song.q));
+      const key=song.artists[0][0];
+      const hit=(d.results||[]).find(r=>r.previewUrl && words(r.artistName).some(w=>lev(w,key)<=1)) || (d.results||[]).find(r=>r.previewUrl);
+      if(hit){song.url=hit.previewUrl; ok++}
+    }catch(e){}
+  }));
+  return ok;
+}
+
+// ---------- Spelverloop ----------
+const $=id=>document.getElementById(id);
+const audio=$("audio");
+let order=[], idx=0, typed=new Set(), state={}, timers=[], tick=null, roundNo=0;
+$("vol").addEventListener("input",e=>audio.volume=+e.target.value);
+audio.volume=.8;
+
+$("startBtn").addEventListener("click", async()=>{
+  $("startBtn").disabled=true; $("loadMsg").textContent="Fragmenten ophalen…";
+  // ontgrendel audio na klik
+  audio.src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="; audio.play().catch(()=>{});
+  const ok=await loadPreviews();
+  if(ok===0){
+    $("loadMsg").innerHTML='<span class="err">Kon geen fragmenten ophalen. Open dit bestand direct in Chrome, Safari of Edge op een computer met internet.</span>';
+    $("startBtn").disabled=false; $("startBtn").textContent="Opnieuw proberen"; return;
+  }
+  startRound();
+});
+
+function startRound(){
+  roundNo++;
+  order=SONGS.filter(s=>s.url).sort(()=>Math.random()-.5).slice(0,10);
+  players.forEach(p=>{p.round=0;p.hist=[]});
+  idx=0; $("intro").hidden=true; $("end").hidden=true; $("game").hidden=false;
+  playSong();
+}
+
+function playSong(){
+  const song=order[idx];
+  typed=new Set(); state={}; players.forEach(p=>state[p.name]={a:false,t:false,cup:0,full:null});
+  cupsGiven=0;
+  $("songNo").textContent=`Ronde ${roundNo} · Nummer ${idx+1} / ${order.length}`;
+  $("phase").textContent="Luisteren"; $("clock").classList.remove("pause");
+  $("reveal").hidden=true; $("feed").innerHTML=""; $("typed").textContent="";
+  $("guess").disabled=false; $("guess").value=""; $("guess").focus();
+  updateMine(); renderBoard();
+
+  audio.src=song.url; audio.currentTime=0; audio.play().catch(()=>{});
+  scheduleBots(song);
+  countdown(PLAY, ()=>endSong(song), $("clock"));
+}
+
+let cupsGiven=0;
+function award(p){
+  const s=state[p.name];
+  if(s.a&&s.t&&!s.full){ s.full=Date.now(); if(cupsGiven<3){cupsGiven++; s.cup=cupsGiven; p.cups[cupsGiven-1]++}
+    feed(`${p.me?"Jij hebt":p.name+" heeft"} alles goed${s.cup?` — beker ${s.cup}`:""}`);}
+}
+
+function scheduleBots(song){
+  players.filter(p=>!p.me).forEach(p=>{
+    const knowA=Math.random()<p.skill, knowT=Math.random()<p.skill*.9;
+    const tA=2+Math.random()*12*(1.2-p.skill), tT=tA+Math.random()*4;
+    if(knowA) timers.push(setTimeout(()=>{state[p.name].a=true; if(!knowT||tT>PLAY) feed(`${p.name} heeft de artiest`); award(p); renderBoard()},tA*1000));
+    if(knowT && tT<PLAY) timers.push(setTimeout(()=>{state[p.name].t=true; if(!state[p.name].a) feed(`${p.name} heeft de titel`); award(p); renderBoard()},tT*1000));
+  });
+}
+
+function countdown(sec, done, el){
+  clearInterval(tick); const start=Date.now();
+  const step=()=>{const left=Math.max(0,sec-(Date.now()-start)/1000);
+    el.textContent=Math.ceil(left); $("barFill").style.transform=`scaleX(${left/sec})`;
+    if(left<=0){clearInterval(tick); done()}};
+  step(); tick=setInterval(step,200);
+}
+
+function endSong(song){
+  audio.pause(); timers.forEach(clearTimeout); timers=[];
+  $("guess").disabled=true;
+  players.forEach(p=>{const s=state[p.name]; const pts=(s.a?.5:0)+(s.t?.5:0); p.round+=pts; p.total+=pts; p.hist.push(pts)});
+  const s=state[me.name];
+  $("reveal").hidden=false;
+  $("reveal").innerHTML=`<span class="tag">Het was</span><b>${song.show}</b><span class="tag">Jij: ${((s.a?.5:0)+(s.t?.5:0)).toString().replace(".",",")} punt</span>`;
+  renderBoard();
+  $("phase").textContent="Pauze"; $("clock").classList.add("pause");
+  countdown(PAUSE, ()=>{ idx++; idx<order.length?playSong():endRound(); }, $("clock"));
+}
+
+function endRound(){
+  $("game").hidden=true;
+  const ranked=[...players].sort((a,b)=>b.round-a.round||b.cups[0]-a.cups[0]);
+  const lines=[];
+  ranked.forEach((p,i)=>{const r=i+1;
+    if(p.prevRank && p.prevRank<=3 && r<=3){const lvl=Math.max(p.prevRank,r); const bonus=lvl===1?3:lvl===2?2:1; p.total+=bonus;
+      lines.push(`${p.me?"Jij krijgt":p.name+" krijgt"} +${bonus} bonus (twee rondes op rij top ${lvl})`)}
+    p.prevRank=r;});
+  const myRank=ranked.indexOf(me)+1;
+  $("end").hidden=false;
+  $("end").innerHTML=`<h1>${myRank===1?"WINNAAR!":"Plek "+myRank}</h1>
+    <p>Je scoorde ${me.round.toString().replace(".",",")} van ${order.length} punten deze ronde.</p>
+    ${lines.length?`<p>${lines.join("<br>")}</p>`:`<p>Twee rondes op rij top 3 levert een bonus op.</p>`}
+    <button id="again">Volgende ronde</button>`;
+  $("again").onclick=startRound;
+  renderBoard();
+}
+
+// ---------- Jouw invoer ----------
+$("form").addEventListener("submit",e=>{
+  e.preventDefault(); const v=$("guess").value; $("guess").value="";
+  if($("guess").disabled) return;
+  words(v).forEach(w=>typed.add(w));
+  $("typed").textContent=[...typed].join(" · ");
+  const r=check(order[idx],typed), s=state[me.name];
+  if(r.a&&!s.a) s.a=true; if(r.t&&!s.t) s.t=true;
+  award(me); updateMine(); renderBoard();
+});
+function updateMine(){const s=state[me.name]||{};
+  $("chipA").classList.toggle("ok",!!s.a); $("chipT").classList.toggle("ok",!!s.t);
+  $("myCup").innerHTML=s.cup?`<span class="cup">${s.cup}</span>`:"";}
+
+function feed(t){const d=document.createElement("div"); d.textContent=t; $("feed").prepend(d);}
+
+function renderBoard(){
+  const ranked=[...players].sort((a,b)=>b.total-a.total||b.cups[0]-a.cups[0]);
+  $("board").innerHTML=ranked.map((p,i)=>{const s=state[p.name]||{};
+    const dots=p.hist.map(h=>`<span class="dot ${h===1?"full":h?"half":""}"></span>`).join("");
+    const cupNow=s.cup?`<span class="cup">${s.cup}</span>`:"";
+    return `<div class="row${p.me?" me":""}"><span class="pos">${i+1}</span>
+      <span class="name">${p.name} ${cupNow}<div class="dots">${dots}</div></span>
+      <span class="cups">🏆${p.cups[0]}·${p.cups[1]}·${p.cups[2]}</span>
+      <span class="pts">${p.total.toFixed(1).replace(".",",")}</span></div>`}).join("");
+}
+renderBoard();
+</script>
+</body>
+</html>
