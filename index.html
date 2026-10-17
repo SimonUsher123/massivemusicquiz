@@ -72,6 +72,8 @@ button.ghost{background:transparent;color:var(--fg);border:2px solid var(--line)
 .center p{max-width:52ch;color:var(--muted);margin:0;line-height:1.5}
 .err{color:var(--hot)}
 .btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.phone{display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer}
+.phone input{width:20px;height:20px;accent-color:var(--accent)}
 .vol{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px}
 @media (prefers-reduced-motion:reduce){.bar>i{transition:none}}
 </style>
@@ -106,6 +108,7 @@ button.ghost{background:transparent;color:var(--fg);border:2px solid var(--line)
       <div class="center" id="ready" hidden>
         <h2 id="readyTitle">Rock</h2>
         <p id="loadMsg">Fragmenten laden…</p>
+        <label class="phone"><input type="checkbox" id="phoneMode"> Telefoonmodus (tegenstanders typen 40% langzamer)</label>
         <div class="btns">
           <button id="startBtn" disabled>Start</button>
           <button class="ghost" id="backBtn">Andere categorie</button>
@@ -155,7 +158,6 @@ async function sha256(t){const b=await crypto.subtle.digest("SHA-256",new TextEn
 function store(k,v){try{v===undefined?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}
 function load(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function showApp(){$("login").hidden=true;$("app").hidden=false;renderCats();renderBoard()}
-if(load("bq_pw")===PW_HASH) showApp(); else {$("login").hidden=false;$("pw").focus()}
 $("login").addEventListener("submit",async e=>{
   e.preventDefault();
   if(await sha256($("pw").value)===PW_HASH){store("bq_pw",PW_HASH);showApp()}
@@ -240,6 +242,8 @@ async function chooseCategory(k){
   $("loadMsg").textContent=`${order.length} nummers klaar. Druk op start als je er klaar voor bent.`;
   $("startBtn").disabled=false;
 }
+$("phoneMode").checked=load("bq_phone")==="1";
+$("phoneMode").onchange=e=>store("bq_phone",e.target.checked?"1":undefined);
 $("backBtn").onclick=()=>{loadToken++;show("pick")};
 $("startBtn").onclick=()=>{
   // iPhone: geluid ontgrendelen tijdens de tik
@@ -280,9 +284,10 @@ function award(p){
 }
 
 function scheduleBots(){
+  const slow=$("phoneMode").checked?1.4:1;
   players.filter(p=>!p.me).forEach(p=>{
     const knowA=Math.random()<p.skill,knowT=Math.random()<p.skill*.9;
-    const tA=2+Math.random()*12*(1.2-p.skill),tT=tA+Math.random()*4;
+    const tA=(2+Math.random()*12*(1.2-p.skill))*slow,tT=tA+Math.random()*4*slow;
     if(knowA&&tA<PLAY)timers.push(setTimeout(()=>{state[p.name].a=true;if(!(knowT&&tT<PLAY))feed(`${p.name} heeft de artiest`);award(p);renderBoard()},tA*1000));
     if(knowT&&tT<PLAY)timers.push(setTimeout(()=>{state[p.name].t=true;if(!state[p.name].a)feed(`${p.name} heeft de titel`);award(p);renderBoard()},tT*1000));
   });
@@ -352,6 +357,9 @@ function renderBoard(){
       <span class="cups">🏆${p.cups[0]}·${p.cups[1]}·${p.cups[2]}</span>
       <span class="pts">${fmt(p.total)}</span></div>`}).join("");
 }
+
+// pas inloggen als alles hierboven geladen is
+if(load("bq_pw")===PW_HASH) showApp(); else {$("login").hidden=false;$("pw").focus()}
 </script>
 </body>
 </html>
