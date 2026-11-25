@@ -222,9 +222,9 @@ function render(V) {
   if (ui.lastSeq == null) ui.lastSeq = V.seq;
   else if (V.seq > ui.lastSeq) { fresh = V.ev.filter((e) => e.seq > ui.lastSeq); ui.lastSeq = V.seq; }
   fresh.filter((e) => e.k === "point").forEach((e) => sayAt(e.by, `👉 ${V.players[e.to].name}, drinken!`));
-  fresh.filter((e) => e.k === "quick").forEach((e) => sayAt(e.by, "Quick!"));
   fresh.filter((e) => e.k === "roll" && e.s === 1000).forEach((e) => sayAt(e.by, "MEX! 🍻"));
-  fresh.filter((e) => e.k === "adje").forEach((e) => { sayAt(e.by, `ADJE! 🍺 ${e.why}`); if (e.by === V.me) toast(`ADJE! ${e.why}`); });
+  // een fout: iedereen ziet wie en waarom
+  fresh.filter((e) => e.k === "adje").forEach((e) => { sayAt(e.by, `ADJE! 🍺 ${e.why}`); toast(`🍺 ADJE voor ${e.by === V.me ? "jou" : V.players[e.by].name}: ${e.why}`); });
   const roll = [...fresh].reverse().find((e) => e.k === "roll" && e.d);
   if (!V.players.length) return;
   $("mRound").textContent = `Ronde ${V.round}${S && S.mode === "online" ? ` · spel ${S.code}` : ""}`;
@@ -239,21 +239,20 @@ function renderSeats(V) {
     const k = (i - base(V) + n) % n, a = (90 + (k * 360) / n) * Math.PI / 180;
     const rx = innerWidth < 640 ? 37 : 45, x = 50 + rx * Math.cos(a), y = 50 + 42 * Math.sin(a);
     const r = R && R.res[i], turn = V.phase === "turn" && V.turn === i;
-    const inRound = R && R.queue.includes(i);
+    const inRound = !(R && R.throwoff) || R.queue.includes(i);   // grijs alleen wie niet meedoet met afgooien
     const gone = online && S.online[i] === false;
-    // tijdens de ronde géén scores: alleen of je klaar bent (en hoeveel worpen / quick)
+    // tijdens de ronde niets: geen scores, niet wie klaar is, geen quick. Pas bij de uitslag.
     let st = "";
     if (V.phase === "roundEnd" && V.result) {
       const f = V.result.first[i];
-      st = `<span class="mres${i === V.loser ? " lose" : ""}">${f ? E.short(f.s) : ""}${f && f.quick ? " ⚡" : ""}</span>`;
-    } else if (r && r.locked) st = `<span class="mres done">✓${r.quick ? " ⚡" : ""}</span>`;
-    else if (turn && r && r.quick) st = `<span class="mres">⚡ quick</span>`;
+      st = `<span class="mres${i === V.loser ? " lose" : ""}">${f ? E.short(f.s) : ""}</span>`;
+    }
     const sy = ui.says[i] && ui.says[i].until > Date.now() ? ui.says[i] : null;
     const take = online && S.host && gone && !S.botified[i] ? `<button type="button" class="ghost mini takeover" data-botify="${i}">Computer neemt over</button>` : "";
     const pointable = ui.pointing && myTurn(V) && i !== V.me;
     return `<div class="seat${turn ? " turn" : ""}${!inRound && V.phase === "turn" ? " passed" : ""}${gone ? " gone" : ""}${pointable ? " pointable" : ""}" style="left:${x}%;top:${y}%">
       ${sy ? `<div class="say" role="status">${esc(sy.text)}</div>` : ""}
-      ${pointable ? `<button type="button" class="ava" data-point="${i}" aria-label="Wijs ${esc(p.name)} aan">${p.avatar}</button>` : `<div class="ava">${p.avatar}${i === V.starter && V.phase === "turn" ? '<span class="crown" aria-hidden="true">🎲</span>' : ""}${gone ? '<span class="bubble off">weg</span>' : ""}</div>`}
+      ${pointable ? `<button type="button" class="ava" data-point="${i}" aria-label="Wijs ${esc(p.name)} aan">${p.avatar}</button>` : `<div class="ava">${p.avatar}${gone ? '<span class="bubble off">weg</span>' : ""}</div>`}
       <div class="nm">${esc(p.name)}${p.human ? "" : ' <span class="bot" aria-label="computer">🤖</span>'}</div>
       <div class="sips">🍺 ${p.drinks}</div>${st}${take}</div>`;
   }).join("");
@@ -275,13 +274,13 @@ function renderCenter(V, roll) {
     const L = V.players[V.loser], res = V.result;
     c.innerHTML = `<div class="dice small">${dieHTML(0, "blank")}${dieHTML(0, "blank")}</div>
       <div class="cscore lose">${esc(L.name)} drinkt ${res.stake}</div>
-      <div class="cinfo">${E.short(res.low)}${res.quick ? " · quick, dus dubbel" : ""}${res.mexes ? ` · ${res.mexes}× mex` : ""}</div>
+      <div class="cinfo">laagste: ${E.short(res.low)}${res.stake > 1 ? ` · ${[res.mexes ? `${res.mexes}× mex (×${2 ** res.mexes})` : "", res.quick ? "verloren met een quick (×2)" : ""].filter(Boolean).join(" · ")}` : ""}</div>
       ${V.me != null ? '<button type="button" class="ghost mini" data-act="next">Volgende ronde</button>' : ""}`;
     ui.shown = null; return;
   }
   if (!R || !r) return;
   const who = V.players[V.turn];
-  const info = `${esc(who.name)}${R.throwoff ? " gooit af" : ""}${r.quick ? " · quick ⚡" : ""}`;
+  const info = `${esc(who.name)}${R.throwoff ? " gooit af" : ""}`;
   const key = `${V.round}.${R.throwoff}.${V.turn}.${r.d ? r.d.join("") : "-"}.${roll ? roll.seq : ""}`;
   if (roll && roll.by === V.turn && r.d) {
     // nieuwe worp van wie nu gooit: rollen (een steen die vast ligt, blijft stil)
@@ -314,7 +313,7 @@ function renderActions(V) {
     } else {
       const dis = (ok) => (ok && !rolling ? "" : "disabled");
       A.push(`<button type="button" data-act="roll" ${dis(E.canRoll(V, me))}>🎲 Gooien</button>`);
-      if (E.canQuick(V, me)) A.push(`<button type="button" class="ghost" data-act="quick" ${dis(true)} title="Eén worp. Verlies je, dan drink je dubbel.">⚡ Quick</button>`);
+      if (E.canQuick(V, me)) A.push(`<button type="button" class="ghost" data-act="quick" ${dis(true)}>⚡ Quick</button>`);
       A.push(`<button type="button" class="ghost" data-act="done" ${dis(E.canDone(V, me))}>✋ Klaar</button>`);
     }
     if (rolling) setTimeout(() => ui.V === V && (renderActions(V), renderSeats(V), renderCenter(V, null)), ui.rollingUntil - Date.now() + 20);
@@ -336,7 +335,6 @@ function onAct(e) {
   if (pt) { send({ type: "point", to: +pt.dataset.point }); return; }
   const b = e.target.closest("[data-act]"); if (!b || b.disabled || !ui.V) return;
   if (["roll", "quick", "done", "next"].includes(b.dataset.act)) {
-    if (b.dataset.act === "quick" && !confirm("Quick: maar één worp, voor iedereen. Verlies je de ronde, dan drink je dubbel. Doen?")) return;
     send({ type: b.dataset.act });
   }
 }
