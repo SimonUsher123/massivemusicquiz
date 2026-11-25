@@ -2,30 +2,33 @@
 // Cloudflare-server (online), zodat beide precies hetzelfde spel spelen. Alles is open: iedereen ziet de worp.
 //
 // Regels
-//  - Twee stenen. De hoogste steen is het tiental: 6 en 3 = 63. 32 is de laagste gewone worp.
+//  - Twee stenen. De hoogste steen is het tiental: 6 en 3 = 63. 32 is de laagste worp die telt.
 //  - Dubbel = honderdtal: 1-1 = 100 … 6-6 = 600. Elk dubbel is hoger dan elke gewone worp.
 //  - 2-1 = Mex: de hoogste worp. Elke mex in een ronde verdubbelt de inzet (1 → 2 → 4 …).
 //  - 3-1: je wijst iemand aan die een slok drinkt, en gooit opnieuw (die worp telt niet mee).
-//  - Doorgooien: iedereen gooit door tot Mex of tot het maximum aantal worpen. Zelf stoppen kan niet
-//    ("64 is wel goed" bestaat niet). De voorgooier heeft maximaal 3 worpen; gooit hij eerder Mex, dan is zijn
-//    aantal worpen het maximum voor de rest. Je laatste worp telt.
+//  - Het gaat om Mex, ten koste van alles. Ligt er een 1 of een 2, dan laat je die steen liggen en gooi je
+//    alleen de andere. Je mag maar één steen laten liggen; die blijft de rest van je beurt liggen.
+//  - Doorgooien: iedereen gooit door tot Mex of tot het maximum aantal worpen, en geeft dan zelf de beurt door.
+//    De voorgooier heeft maximaal 3 worpen; zijn aantal worpen is het maximum voor de rest.
 //  - Quick: vóór je eerste worp kun je kiezen voor maar één worp. Verlies je de ronde daarmee, dan drink je
-//    dubbel. Neemt de voorgooier een quick, dan is het maximum voor iedereen 1.
+//    dubbel.
+//  - Adje (automatisch) als je: een 1 of 2 niet laat liggen, een andere steen laat liggen, vaker gooit dan mag
+//    (ook na Mex), of te vroeg stopt. Het spel waarschuwt niet vooraf: opletten is het spel.
 //  - De laagste drinkt de inzet. Gelijke laagsten gooien één keer af, zo nodig opnieuw. De verliezer begint
-//    de volgende ronde. Er is geen einde: de stand houdt de slokken bij.
+//    de volgende ronde. Er is geen einde: de stand houdt slokken en adjes bij.
 //
-// Onthouden hoort bij het spel: tijdens een ronde laat view() alleen de worp zien van wie nu gooit. Wie klaar is,
-// is klaar, zonder score. Pas aan het eind van de ronde gaat alles open.
+// Onthouden hoort bij het spel: view() laat alleen de worp zien die nu op tafel ligt. Geen eerdere worpen, geen
+// aantal worpen, geen maximum, geen inzet. Pas aan het eind van de ronde gaat de uitslag open.
 //
 // De spelstand G is gewone JSON (de server bewaart hem). Tijd komt altijd van buiten (`now`): wat er straks
 // vanzelf moet gebeuren (een computer die gooit, de volgende ronde) staat als tijdstip in G.wait.
 
-export const VERSION = "1.6.1";
+export const VERSION = "1.7.0";
 export const AVATARS = ["😎", "🧔", "👩‍🦰", "👴", "🧑‍🎤", "🤠", "👵", "🧙"];
 export const BOT_NAMES = ["Henk", "Ingrid", "Kees", "Fleur", "Joop", "Mien", "Sjaak", "Truus"];
 export const MIN = 2, MAX = 8;
 // tempo (ms)
-export const T = { roll: 900, think: [700, 1300], afterLast: 1300, point: [900, 1600], roundEnd: 6000 };
+export const T = { roll: 900, think: [700, 1300], hold: [500, 900], afterLast: 1300, point: [900, 1600], roundEnd: 6000 };
 
 // ---------- Dobbelstenen ----------
 // Eerlijke steen: cryptografisch toeval met afwijzing (bytes ≥ 252 weg), zodat elke kant precies 1/6 kans heeft.
@@ -57,7 +60,7 @@ export const humans = (G) => G.players.map((p, i) => (p.human ? i : -1)).filter(
 export function newGame(seats, now) {
   const G = {
     v: VERSION, round: 0, seq: 0, ev: [], log: [],
-    players: seats.map((s) => ({ name: s.name, human: !!s.human, avatar: s.avatar, drinks: 0, lost: 0, mex: 0, pointed: 0 })),
+    players: seats.map((s) => ({ name: s.name, human: !!s.human, avatar: s.avatar, drinks: 0, adje: 0, lost: 0, mex: 0, pointed: 0 })),
     phase: "turn", starter: Math.floor(Math.random() * seats.length), wait: null,
   };
   startRound(G, G.starter, now);
@@ -65,7 +68,8 @@ export function newGame(seats, now) {
 }
 
 const order = (G, from) => G.players.map((_, k) => (from + k) % G.players.length);
-const fresh = () => ({ d: null, s: 0, n: 0, quick: false, locked: false, point: false });
+// hold: index (0/1) van de steen die je wilt laten liggen; keep: de waarde die vast ligt (na de volgende worp)
+const fresh = () => ({ d: null, s: 0, n: 0, quick: false, locked: false, point: false, hold: null, keep: null });
 
 function startRound(G, from, now) {
   G.round++;
@@ -80,36 +84,57 @@ function startRound(G, from, now) {
 }
 
 function push(G, e) { G.seq++; e.seq = G.seq; G.ev.push(e); if (G.ev.length > 30) G.ev.splice(0, G.ev.length - 30); }
-// kort logboek met alleen wat iedereen toch hoort (mex, 31, quick, verliezer): geen scores van tussendoor
+// kort logboek met alleen wat iedereen toch hoort (31, quick, adje, verliezer): geen worpen of aantallen
 function logl(G, t) { G.log.unshift(t); if (G.log.length > 4) G.log.length = 4; }
+function adje(G, i, why) {
+  G.players[i].adje++;
+  push(G, { k: "adje", by: i, why });
+  logl(G, `${G.players[i].name}: ADJE! (${why})`);
+}
 
 const limit = (G, r) => (G.R.throwoff || r.quick ? 1 : G.R.max);
-const busy = (r) => r.locked || r.point;
-export function canRoll(G, i) { const r = G.R && G.R.res[i]; return G.phase === "turn" && G.turn === i && !!r && !busy(r) && r.n < limit(G, r); }
-// zelf stoppen bestaat niet: je beurt eindigt vanzelf bij Mex of bij het maximum
-export function canStop() { return false; }
-export function canQuick(G, i) { const r = G.R && G.R.res[i]; return canRoll(G, i) && r.n === 0 && !G.R.throwoff && G.R.max > 1; }
+const finished = (G, r) => r.n > 0 && (r.n >= limit(G, r) || r.s === 1000);
+const hasLow = (d) => !!d && (d[0] <= 2 || d[1] <= 2);
+// Wat een mens mag proberen. Het spel zegt niet of het mág: te vaak gooien of te vroeg stoppen kan, en kost een adje.
+const mine = (G, i) => { const r = G.R && G.R.res[i]; return G.phase === "turn" && G.turn === i && !!r && !r.locked && !r.point ? r : null; };
+export function canRoll(G, i) { return !!mine(G, i); }
+// (werkt op de spelstand én op view(): die kent geen aantal worpen, alleen of je al gegooid hebt)
+const started = (r) => (r.n != null ? r.n > 0 : !r.first);
+export function canDone(G, i) { const r = mine(G, i); return !!r && started(r); }
+export function canQuick(G, i) { const r = mine(G, i); return !!r && !started(r) && !G.R.throwoff; }
+export function canHold(G, i) { const r = mine(G, i); return !!r && started(r) && !!r.d && r.keep == null && !G.R.throwoff; }
 export function mustPoint(G, i) { const r = G.R && G.R.res[i]; return G.phase === "turn" && G.turn === i && !!r && r.point; }
-export const maxFor = (G, i) => (G.R && G.R.res[i] ? limit(G, G.R.res[i]) : G.R ? G.R.max : 3);
 
 function doRoll(G, i, now, quick) {
   const r = G.R.res[i];
+  if (finished(G, r)) {
+    // te vaak: die worp gaat niet door, wel een adje, en je beurt is voorbij
+    adje(G, i, r.s === 1000 ? "na Mex nog gooien" : "te vaak gegooid");
+    endTurn(G, i, now);
+    return;
+  }
   if (quick) { r.quick = true; push(G, { k: "quick", by: i }); logl(G, `${G.players[i].name} gaat voor een quick.`); }
-  const d = roll2(), s = score(d);
+  // laten liggen
+  if (r.keep == null && r.hold != null && r.d) {
+    const v = r.d[r.hold];
+    if (v <= 2) r.keep = { i: r.hold, v };
+    else { adje(G, i, "verkeerde steen laten liggen"); r.hold = null; }
+  } else if (r.keep == null && r.n > 0 && hasLow(r.d) && r.s !== 1000) {
+    adje(G, i, "1 of 2 niet laten liggen");
+  }
+  const d = r.keep ? (r.keep.i === 0 ? [r.keep.v, die()] : [die(), r.keep.v]) : roll2();
+  const s = score(d);
   r.d = d; r.s = s; r.n++;
-  push(G, { k: "roll", by: i, d, s, n: r.n, quick: r.quick });
+  push(G, { k: "roll", by: i, d, s, keep: r.keep ? r.keep.i : null });
   if (s === 31) {
     // 31: iemand aanwijzen, en deze worp telt niet
     r.n--; r.point = true;
     plan(G, now, T.roll);
     return;
   }
-  if (s === 1000) {
-    G.R.mexes++; G.R.stake *= 2; G.players[i].mex++;
-    logl(G, `${G.players[i].name} gooit Mex! Inzet nu ${G.R.stake}.`);
-  }
-  // klaar als het maximum bereikt is, of bij Mex (hoger kan niet)
-  if (r.n >= limit(G, r) || s === 1000) { r.locked = true; G.wait = now + T.roll + T.afterLast; }
+  if (s === 1000) { G.R.mexes++; G.R.stake *= 2; G.players[i].mex++; }
+  // computers stoppen zelf netjes; mensen moeten zelf op "klaar" drukken
+  if (!G.players[i].human && finished(G, r)) { r.locked = true; G.wait = now + T.roll + T.afterLast; }
   else plan(G, now, T.roll);
 }
 
@@ -119,23 +144,26 @@ function doPoint(G, i, to, now) {
   G.players[to].drinks++; G.players[i].pointed++;
   push(G, { k: "point", by: i, to });
   logl(G, `${G.players[i].name} gooit 31 en wijst ${G.players[to].name} aan: slok!`);
-  r.d = null; r.s = 0;   // die worp telt niet: opnieuw
+  r.d = null; r.s = 0; r.hold = null;   // die worp telt niet: opnieuw (een steen die al vast lag, blijft liggen)
   plan(G, now);
+}
+
+function doDone(G, i, now) {
+  const r = G.R.res[i];
+  if (!finished(G, r)) adje(G, i, "te vroeg gestopt");
+  endTurn(G, i, now);
 }
 
 function endTurn(G, i, now) {
   const r = G.R.res[i];
   r.locked = true;
-  if (!G.R.throwoff && i === G.R.queue[0] && !G.R.maxSet) {
-    G.R.max = r.n; G.R.maxSet = true;
-    if (r.n < 3) logl(G, `${G.players[i].name} stopt na ${r.n} worp${r.n > 1 ? "en" : ""}: maximum is ${r.n}.`);
-  }
+  if (!G.R.throwoff && i === G.R.queue[0] && !G.R.maxSet) { G.R.max = Math.max(1, r.n); G.R.maxSet = true; }
   push(G, { k: "stop", by: i });
   const q = G.R.queue, k = q.indexOf(i);
   if (k < q.length - 1) {
     G.turn = q[k + 1];
     G.R.res[G.turn] = fresh();
-    plan(G, now);
+    plan(G, now, T.afterLast / 2);
   } else settle(G, now);
 }
 
@@ -149,7 +177,7 @@ function settle(G, now) {
     G.R.queue = lows; G.R.res = {};
     G.turn = lows[0]; G.R.res[G.turn] = fresh();
     push(G, { k: "throwoff", who: lows });
-    logl(G, `Gelijk laagst (${short(low)}): ${lows.map((i) => G.players[i].name).join(" en ")} gooien af.`);
+    logl(G, `Gelijk: ${lows.map((i) => G.players[i].name).join(" en ")} gooien af.`);
     plan(G, now, T.afterLast);
     return;
   }
@@ -159,7 +187,7 @@ function settle(G, now) {
   const st = G.R.stake * (quick ? 2 : 1);
   P.lost++; P.drinks += st;
   G.loser = L;
-  G.result = { first: G.R.first, off: G.R.throwoff ? G.R.res : null, low: G.R.res[L].s, stake: st, quick, mexes: G.R.mexes };
+  G.result = { first: G.R.first, low: G.R.res[L].s, stake: st, quick, mexes: G.R.mexes };
   push(G, { k: "lose", by: L, stake: st });
   logl(G, `${P.name} verliest ronde ${G.round}${quick ? " met een quick" : ""}: ${st} slok${st > 1 ? "ken" : ""}.`);
   G.phase = "roundEnd"; G.wait = now + T.roundEnd;
@@ -175,17 +203,18 @@ function plan(G, now, extra = 0) {
 }
 export function nextDue(G) { return G.wait; }
 
-// computer: kiest alleen of hij een quick neemt (vaker als de lat laag ligt), verder gewoon doorgooien.
+// computer: speelt foutloos. Laat een 1 of 2 liggen, gooit door tot Mex of het maximum, af en toe een quick.
 function botMove(G, i) {
   const r = G.R.res[i];
   if (r.point) return "point";
-  const others = G.R.queue.filter((j) => j !== i && G.R.res[j] && G.R.res[j].locked).map((j) => G.R.res[j].s);
-  const low = others.length ? Math.min(...others) : null;
   if (r.n === 0) {
-    if (canQuick(G, i) && Math.random() < (low != null && low < 43 ? 0.25 : 0.05)) return "quick";
-    return "roll";
+    const others = G.R.queue.filter((j) => j !== i && G.R.res[j] && G.R.res[j].locked).map((j) => G.R.res[j].s);
+    const low = others.length ? Math.min(...others) : null;
+    return canQuick(G, i) && Math.random() < (low != null && low < 43 ? 0.25 : 0.05) ? "quick" : "roll";
   }
-  return "roll";   // doorgooien tot Mex of het maximum (de beurt eindigt dan vanzelf)
+  if (finished(G, r)) return "done";
+  if (r.keep == null && r.hold == null && hasLow(r.d) && !G.R.throwoff) { r.hold = r.d[0] <= 2 ? 0 : 1; }
+  return "roll";
 }
 function botTarget(G, i) {
   const opts = G.players.map((_, j) => j).filter((j) => j !== i);
@@ -205,17 +234,25 @@ export function tick(G, now) {
   if (G.players[i].human) return false;
   const m = botMove(G, i);
   if (m === "point") doPoint(G, i, botTarget(G, i), now);
-  else if (m === "stop") endTurn(G, i, now);
+  else if (m === "done") endTurn(G, i, now);
   else doRoll(G, i, now, m === "quick");
   return true;
 }
 
 // een mens doet iets. Geeft een foutmelding terug, of niets als het gelukt is.
+// Let op: foutmeldingen hier gaan alleen over wat écht niet kan (niet jouw beurt), nooit over spelregels.
 export function act(G, i, a, now) {
   if (!a) return "Onbekende actie.";
   switch (a.type) {
-    case "roll": if (!canRoll(G, i)) return "Je kunt nu niet gooien."; doRoll(G, i, now, false); return;
-    case "quick": if (!canQuick(G, i)) return "Een quick kan nu niet."; doRoll(G, i, now, true); return;
+    case "roll": if (!canRoll(G, i)) return "Je bent nu niet aan de beurt."; doRoll(G, i, now, false); return;
+    case "quick": if (!canQuick(G, i)) return "Een quick kan alleen vóór je eerste worp."; doRoll(G, i, now, true); return;
+    case "done": if (!canDone(G, i)) return "Eerst gooien."; doDone(G, i, now); return;
+    case "hold": {
+      if (!canHold(G, i)) return "Je kunt nu geen steen laten liggen.";
+      const k = a.i === 0 || a.i === 1 ? a.i : null;
+      const r = G.R.res[i]; r.hold = r.hold === k ? null : k;   // nog eens tikken = weer oppakken
+      return;
+    }
     case "point": {
       const to = +a.to;
       if (!mustPoint(G, i)) return "Je hoeft nu niemand aan te wijzen.";
@@ -233,20 +270,20 @@ export function setHuman(G, i, human, now) {
   if (G.phase === "turn" && G.turn === i) plan(G, now);
 }
 
-// Wat een speler te zien krijgt. Tijdens de ronde: alleen de worp van wie nu gooit; van de rest alleen of ze
-// klaar zijn, hoeveel worpen ze deden en of het een quick was. Worpen van eerder in de ronde staan er niet in.
+// Wat een speler te zien krijgt: de stenen die nu op tafel liggen (en welke vast ligt), wie aan de beurt is,
+// wie al klaar is. Geen aantal worpen, geen maximum, geen inzet, geen eerdere worpen.
 export function view(G, me) {
   const V = { v: G.v, round: G.round, seq: G.seq, log: G.log, phase: G.phase, starter: G.starter, turn: G.turn,
     loser: G.loser, result: G.phase === "roundEnd" ? G.result : null, me: me == null ? null : me,
-    players: G.players.map((p) => ({ name: p.name, human: p.human, avatar: p.avatar, drinks: p.drinks, lost: p.lost, mex: p.mex, pointed: p.pointed, botified: p.botified })),
-    ev: G.ev.map((e) => (e.k === "roll" && !(G.phase === "turn" && e.by === G.turn) ? { k: "roll", seq: e.seq, by: e.by, old: true } : e)) };
+    players: G.players.map((p) => ({ name: p.name, human: p.human, avatar: p.avatar, drinks: p.drinks, adje: p.adje, lost: p.lost, mex: p.mex, pointed: p.pointed, botified: p.botified })),
+    ev: G.ev.map((e) => (e.k === "roll" ? (G.phase === "turn" && e.by === G.turn ? { k: "roll", seq: e.seq, by: e.by, d: e.d, s: e.s, keep: e.keep } : { k: "roll", seq: e.seq, by: e.by, old: true }) : e)) };
   if (G.R) {
     const res = {};
     for (const [i, r] of Object.entries(G.R.res)) {
       const cur = G.phase === "turn" && +i === G.turn;
-      res[i] = cur ? { ...r } : { n: r.n, quick: r.quick, locked: r.locked };
+      res[i] = cur ? { d: r.d, s: r.s, quick: r.quick, point: r.point, locked: r.locked, hold: r.hold, keep: r.keep, first: r.n === 0 } : { quick: r.quick, locked: r.locked };
     }
-    V.R = { queue: G.R.queue, max: G.R.max, maxSet: G.R.maxSet, stake: G.R.stake, mexes: G.R.mexes, throwoff: G.R.throwoff, res };
+    V.R = { queue: G.R.queue, throwoff: G.R.throwoff, res };
   }
   return V;
 }

@@ -16,7 +16,7 @@
 .dice{display:flex;gap:16px;justify-content:center}
 .dice.small .die{--s:40px}
 .dice.big .die{--s:min(30vw,150px)}
-.rolling .die{animation:tumble .14s linear infinite}
+.rolling .die.spin,.rolling .die:not(.held){animation:tumble .14s linear infinite}
 .rolling .die:nth-child(2){animation-direction:reverse}
 @keyframes tumble{0%{transform:rotate(0) translateY(0)}50%{transform:rotate(14deg) translateY(-6px)}100%{transform:rotate(-10deg) translateY(0)}}
 @media (prefers-reduced-motion:reduce){.rolling .die{animation:none;opacity:.6}}
@@ -69,3 +69,10 @@
 .tchart .hit{fill:transparent}
 .tchart .exp{stroke:var(--fg);stroke-width:2;stroke-dasharray:4 3}
 .tchart .curve{fill:none;stroke:var(--hot);stroke-width:2}
+
+/* laten liggen */
+.diebtn{background:transparent;border:0;padding:0;border-radius:14px;cursor:pointer;transition:transform .15s}
+.diebtn:hover{transform:translateY(-3px)}
+.diebtn:focus-visible{outline:3px solid var(--hot);outline-offset:4px}
+.die.held{box-shadow:0 0 0 4px var(--accent),0 6px 14px rgba(0,0,0,.45);transform:translateY(-6px)}
+.rolling .die.held{animation:none}
