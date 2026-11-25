@@ -9,7 +9,7 @@
 // De spelstand G is gewone JSON (de server bewaart hem). Tijd komt altijd van buiten (`now`): wat er straks
 // vanzelf moet gebeuren staat als tijdstip in G.wait en G.coupAt, en tick() voert het uit als het zover is.
 
-export const VERSION="1.4";
+export const VERSION="1.4.1";
 export const TITLES=["President","Vicepresident","Burger","Vice-feut","Feut"];
 export const SUITS=["♣","♦","♥","♠"];
 export const ACE=14;

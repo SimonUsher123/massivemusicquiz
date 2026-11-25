@@ -46,20 +46,12 @@ function token(){
 }
 function renderSetup(){
   $("pCount").innerHTML=[4,5,6,7].map(n=>`<button type="button" class="seg${cfg.n===n?" on":""}" data-n="${n}" aria-pressed="${cfg.n===n}">${n}</button>`).join("");
-  $("pSeatCfg").innerHTML=cfg.seats.slice(0,cfg.n).map((s,i)=>`<div class="seatcfg">
-    <span class="mini-ava" aria-hidden="true">${AVATARS[i]}</span>
-    <input type="text" value="${esc(s.name)}" data-i="${i}" maxlength="14" aria-label="Naam speler ${i+1}">
-    <div class="toggle" role="group" aria-label="Soort speler ${i+1}">
-      <button type="button" data-i="${i}" data-h="1" class="${s.human?"on":""}" aria-pressed="${s.human}">Mens</button>
-      <button type="button" data-i="${i}" data-h="0" class="${s.human?"":"on"}" aria-pressed="${!s.human}">Computer</button></div></div>`).join("");
   $("pMyName").value=cfg.myName;
   $("pStyle").innerHTML=styleSeg(cfg.style,"style");
 }
 const styleSeg=(cur,attr)=>Object.entries(STYLES).map(([k,v])=>`<button type="button" class="seg${cur===k?" on":""}" data-${attr}="${k}" aria-pressed="${cur===k}">${v.label}</button>`).join("");
 $("pStyle").onclick=e=>{const b=e.target.closest("[data-style]");if(!b)return;cfg.style=b.dataset.style;saveCfg();renderSetup()};
 $("pCount").onclick=e=>{const b=e.target.closest("[data-n]");if(!b)return;cfg.n=+b.dataset.n;saveCfg();renderSetup()};
-$("pSeatCfg").onclick=e=>{const b=e.target.closest("[data-h]");if(!b)return;cfg.seats[+b.dataset.i].human=b.dataset.h==="1";saveCfg();renderSetup()};
-$("pSeatCfg").oninput=e=>{const i=e.target.dataset.i;if(i!=null){cfg.seats[+i].name=e.target.value;saveCfg()}};
 $("pMyName").oninput=e=>{cfg.myName=e.target.value.trim().slice(0,14);saveCfg()};
 $("pStart").onclick=startLocal;
 $("pCreate").onclick=()=>{
@@ -86,7 +78,7 @@ function resetUi(){ui.sel.clear();ui.selFor=null;ui.coupWho=undefined;ui.lastSeq
 // ballonnetje boven een poppetje (chat, muiten, wolkje); verdwijnt vanzelf
 function sayAt(i,text,cloud){ui.says[i]={text,cloud,until:Date.now()+(cloud?6000:5000)};
   clearTimeout(ui.sayT);ui.sayT=setTimeout(update,(cloud?6000:5000)+50)}
-function showPanel(w){$("pSetup").hidden=w!=="setup";$("pLobby").hidden=w!=="lobby";$("pGame").hidden=w!=="game";if(w!=="game")$("pOverlay").hidden=true;
+function showPanel(w){if(w!=="game")document.querySelectorAll(".flyer").forEach(f=>f.remove());$("pSetup").hidden=w!=="setup";$("pLobby").hidden=w!=="lobby";$("pGame").hidden=w!=="game";if(w!=="game")$("pOverlay").hidden=true;
   // de chat verhuist mee naar de wachtruimte of de tafel (zelfde element, zodat half getypte tekst blijft staan)
   (w==="lobby"?$("pLobby"):$("pGame")).appendChild($("pChat"));renderChat()}
 let toastT=null;
@@ -95,7 +87,10 @@ function toast(msg,sticky){const t=$("pToast");t.textContent=msg;t.hidden=!msg;c
 // ---------- Op dit apparaat ----------
 function startLocal(){
   stopLocal();if(S&&S.mode==="online")leaveOnline();
-  const seats=cfg.seats.slice(0,cfg.n).map((s,i)=>({name:s.name.trim()||`Speler ${i+1}`,human:s.human,avatar:AVATARS[i],style:E.styleValue(cfg.style)}));
+  // op dit apparaat: jij tegen de computers (met meer mensen speel je online, ieder op een eigen apparaat)
+  const me=cfg.myName||"Jij",bots=BOT_NAMES.filter(b=>b.toLowerCase()!==me.toLowerCase());
+  const seats=Array.from({length:cfg.n},(_,i)=>i===0?{name:me,human:true,avatar:AVATARS[0]}
+    :{name:bots[i-1],human:false,avatar:AVATARS[i],style:E.styleValue(cfg.style)});
   const G=E.newGame(seats,Date.now()),H=E.humans(G);
   S={mode:"local",G,base:H.length?H[0]:0,viewer:null,timer:null};
   resetUi();showPanel("game");update();
@@ -189,7 +184,7 @@ function renderLobby(){
     <label class="opt">Jouw naam <input type="text" id="lobbyName" maxlength="14" value="${esc(cfg.myName)}"></label>
     <ol class="lplayers">${seats}${bots?`<li class="bots">+ ${bots} computer${bots>1?"s":""}</li>`:""}</ol>
     ${L.host?`<div class="field"><span class="lbl">Aantal spelers</span><div class="seg-row">${counts}</div></div>
-      <div class="field"><span class="lbl">Computers spelen</span><div class="seg-row wrap">${styleSeg(L.style,"lstyle")}</div></div>
+      <div class="field col"><span class="lbl">Computers spelen</span><div class="seg-row multi">${styleSeg(L.style,"lstyle")}</div></div>
       <button type="button" data-l="start">Start spel</button>`
       :`<p class="tag">Computers spelen: ${esc((STYLES[L.style]||STYLES.normal).label.toLowerCase())}. Wachten tot ${esc(L.hostName||"de host")} het spel start…</p>`}
     <button type="button" class="ghost" data-l="leave">Verlaten</button>`;

@@ -13,13 +13,7 @@ button.ghost.on{border-color:var(--accent);color:var(--accent)}
 .seg-row{display:flex;gap:6px}
 .seg{background:var(--bg);color:var(--fg);border:2px solid var(--line);padding:10px 18px;font-family:var(--mono)}
 .seg.on{border-color:var(--accent);color:var(--accent)}
-.seatlist{display:flex;flex-direction:column;gap:8px}
-.seatcfg{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center}
 .mini-ava{font-size:24px;width:32px;text-align:center}
-.seatcfg input[type=text]{font-size:16px;padding:10px 12px}
-.toggle{display:flex;border:2px solid var(--line);border-radius:10px;overflow:hidden}
-.toggle button{border-radius:0;background:transparent;color:var(--muted);padding:10px 12px;font-size:14px}
-.toggle button.on{background:var(--accent);color:var(--bg)}
 
 /* online */
 .online-row{display:flex;gap:8px;flex-wrap:wrap}
@@ -103,7 +97,9 @@ button.ghost.on{border-color:var(--accent);color:var(--accent)}
 .chatform{display:flex;gap:8px}
 .chatform input[type=text]{font-size:15px;padding:10px 12px}
 .chatform button{padding:10px 16px}
-.seg-row.wrap{flex-wrap:wrap;justify-content:flex-end}
+.seg-row.multi{flex-wrap:wrap;justify-content:flex-start}
+.field.col{flex-direction:column;align-items:flex-start;gap:8px}
+.field.col .seg{padding:8px 12px;font-size:14px}
 .dock{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px}
 .turnbar{text-align:center;font-weight:800;color:var(--muted);height:40px;line-height:40px;border-radius:10px;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .turnbar.me{color:var(--bg);background:var(--accent);font-family:var(--display);font-weight:400;letter-spacing:.04em;animation:glow 1.4s ease-in-out infinite}
