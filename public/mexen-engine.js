@@ -6,8 +6,9 @@
 //  - Dubbel = honderdtal: 1-1 = 100 … 6-6 = 600. Elk dubbel is hoger dan elke gewone worp.
 //  - 2-1 = Mex: de hoogste worp. Elke mex in een ronde verdubbelt de inzet (1 → 2 → 4 …).
 //  - 3-1: je wijst iemand aan die een slok drinkt, en gooit opnieuw (die worp telt niet mee).
-//  - De voorgooier gooit maximaal 3 keer; zijn aantal worpen is het maximum voor de rest van de ronde.
-//    Je laatste worp telt (je kunt niet terug naar een eerdere).
+//  - Doorgooien: iedereen gooit door tot Mex of tot het maximum aantal worpen. Zelf stoppen kan niet
+//    ("64 is wel goed" bestaat niet). De voorgooier heeft maximaal 3 worpen; gooit hij eerder Mex, dan is zijn
+//    aantal worpen het maximum voor de rest. Je laatste worp telt.
 //  - Quick: vóór je eerste worp kun je kiezen voor maar één worp. Verlies je de ronde daarmee, dan drink je
 //    dubbel. Neemt de voorgooier een quick, dan is het maximum voor iedereen 1.
 //  - De laagste drinkt de inzet. Gelijke laagsten gooien één keer af, zo nodig opnieuw. De verliezer begint
@@ -19,7 +20,7 @@
 // De spelstand G is gewone JSON (de server bewaart hem). Tijd komt altijd van buiten (`now`): wat er straks
 // vanzelf moet gebeuren (een computer die gooit, de volgende ronde) staat als tijdstip in G.wait.
 
-export const VERSION = "1.6.0";
+export const VERSION = "1.6.1";
 export const AVATARS = ["😎", "🧔", "👩‍🦰", "👴", "🧑‍🎤", "🤠", "👵", "🧙"];
 export const BOT_NAMES = ["Henk", "Ingrid", "Kees", "Fleur", "Joop", "Mien", "Sjaak", "Truus"];
 export const MIN = 2, MAX = 8;
@@ -85,7 +86,8 @@ function logl(G, t) { G.log.unshift(t); if (G.log.length > 4) G.log.length = 4; 
 const limit = (G, r) => (G.R.throwoff || r.quick ? 1 : G.R.max);
 const busy = (r) => r.locked || r.point;
 export function canRoll(G, i) { const r = G.R && G.R.res[i]; return G.phase === "turn" && G.turn === i && !!r && !busy(r) && r.n < limit(G, r); }
-export function canStop(G, i) { const r = G.R && G.R.res[i]; return G.phase === "turn" && G.turn === i && !!r && !busy(r) && r.n > 0; }
+// zelf stoppen bestaat niet: je beurt eindigt vanzelf bij Mex of bij het maximum
+export function canStop() { return false; }
 export function canQuick(G, i) { const r = G.R && G.R.res[i]; return canRoll(G, i) && r.n === 0 && !G.R.throwoff && G.R.max > 1; }
 export function mustPoint(G, i) { const r = G.R && G.R.res[i]; return G.phase === "turn" && G.turn === i && !!r && r.point; }
 export const maxFor = (G, i) => (G.R && G.R.res[i] ? limit(G, G.R.res[i]) : G.R ? G.R.max : 3);
@@ -173,8 +175,7 @@ function plan(G, now, extra = 0) {
 }
 export function nextDue(G) { return G.wait; }
 
-// computer: gooi door zolang je (bijna) de laagste bent en worpen over hebt.
-// Computers onthouden niet alles: ze kennen de laagste worp tot nu toe maar soms net verkeerd.
+// computer: kiest alleen of hij een quick neemt (vaker als de lat laag ligt), verder gewoon doorgooien.
 function botMove(G, i) {
   const r = G.R.res[i];
   if (r.point) return "point";
@@ -184,9 +185,7 @@ function botMove(G, i) {
     if (canQuick(G, i) && Math.random() < (low != null && low < 43 ? 0.25 : 0.05)) return "quick";
     return "roll";
   }
-  if (r.n >= limit(G, r) || r.s === 1000) return "stop";
-  if (low == null) return r.s < (r.n === 1 ? 54 : 43) ? "roll" : "stop";   // voorgooier
-  return r.s > low ? "stop" : "roll";                                       // er is al iemand lager
+  return "roll";   // doorgooien tot Mex of het maximum (de beurt eindigt dan vanzelf)
 }
 function botTarget(G, i) {
   const opts = G.players.map((_, j) => j).filter((j) => j !== i);
@@ -217,7 +216,6 @@ export function act(G, i, a, now) {
   switch (a.type) {
     case "roll": if (!canRoll(G, i)) return "Je kunt nu niet gooien."; doRoll(G, i, now, false); return;
     case "quick": if (!canQuick(G, i)) return "Een quick kan nu niet."; doRoll(G, i, now, true); return;
-    case "stop": if (!canStop(G, i)) return "Je kunt nu niet stoppen."; endTurn(G, i, now); return;
     case "point": {
       const to = +a.to;
       if (!mustPoint(G, i)) return "Je hoeft nu niemand aan te wijzen.";

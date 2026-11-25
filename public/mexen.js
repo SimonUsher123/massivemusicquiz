@@ -308,7 +308,6 @@ function renderActions(V) {
       const dis = (ok) => (ok && !rolling ? "" : "disabled");
       A.push(`<button type="button" data-act="roll" ${dis(E.canRoll(V, me))}>🎲 Gooien</button>`);
       if (E.canQuick(V, me)) A.push(`<button type="button" class="ghost" data-act="quick" ${dis(true)} title="Eén worp. Verlies je, dan drink je dubbel.">⚡ Quick</button>`);
-      A.push(`<button type="button" class="ghost" data-act="stop" ${dis(E.canStop(V, me))}>Laten staan</button>`);
     }
     if (rolling) setTimeout(() => ui.V === V && (renderActions(V), renderSeats(V)), ui.rollingUntil - Date.now() + 20);
   }
@@ -326,7 +325,7 @@ function onAct(e) {
   const pt = e.target.closest("[data-point]");
   if (pt) { send({ type: "point", to: +pt.dataset.point }); return; }
   const b = e.target.closest("[data-act]"); if (!b || b.disabled || !ui.V) return;
-  if (["roll", "quick", "stop", "next"].includes(b.dataset.act)) {
+  if (["roll", "quick", "next"].includes(b.dataset.act)) {
     if (b.dataset.act === "quick" && !confirm("Quick: maar één worp. Verlies je de ronde, dan drink je dubbel. Doen?")) return;
     send({ type: b.dataset.act });
   }
