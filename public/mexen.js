@@ -261,11 +261,10 @@ function renderSeats(V) {
 // de stenen van wie nu gooit; je eigen stenen kun je aantikken om te laten liggen
 function diceHTML(V, r) {
   const me = myTurn(V), holdable = me && E.canHold(V, V.me) && Date.now() >= ui.rollingUntil;
-  const keep = r.keep ? r.keep.i : null;
   return [0, 1].map((k) => {
-    const v = r.d ? r.d[k] : keep === k ? r.keep.v : 0;
-    const held = keep === k || r.hold === k;
-    if (holdable && v) return `<button type="button" class="diebtn${held ? " on" : ""}" data-hold="${k}" aria-pressed="${held}" aria-label="Steen ${v}${held ? ", ligt" : ""}">${dieHTML(v, held ? "held" : "")}</button>`;
+    const v = r.d ? r.d[k] : 0;
+    const held = r.hold === k;
+    if (holdable && v && k !== r.prev) return `<button type="button" class="diebtn${held ? " on" : ""}" data-hold="${k}" aria-pressed="${held}" aria-label="Steen ${v}${held ? ", ligt" : ""}">${dieHTML(v, held ? "held" : "")}</button>`;
     return dieHTML(v, v ? (held ? "held" : "") : "blank");
   }).join("");
 }
@@ -289,7 +288,7 @@ function renderCenter(V, roll) {
     ui.shown = key; ui.rollingUntil = Date.now() + ROLL_MS;
     c.innerHTML = `<div class="dice" id="mDice"></div><div class="cscore" id="mScore">&nbsp;</div><div class="cinfo">${info}</div>`;
     tumble($("mDice"), r.d, () => { const sc = $("mScore"); if (sc) { sc.textContent = scoreText(r.s); sc.className = scoreCls(r.s); } renderActions(ui.V); },
-      r.keep ? r.keep.i : null, () => diceHTML(ui.V && ui.V.turn === V.turn ? ui.V : V, cur(ui.V) || r));
+      roll.keep, () => diceHTML(ui.V && ui.V.turn === V.turn ? ui.V : V, cur(ui.V) || r));
     return;
   }
   if (Date.now() < ui.rollingUntil && ui.shown && ui.shown.startsWith(`${V.round}.${R.throwoff}.${V.turn}.${r.d ? r.d.join("") : "-"}`)) return;   // rolt nog
@@ -337,7 +336,7 @@ function onAct(e) {
   if (pt) { send({ type: "point", to: +pt.dataset.point }); return; }
   const b = e.target.closest("[data-act]"); if (!b || b.disabled || !ui.V) return;
   if (["roll", "quick", "done", "next"].includes(b.dataset.act)) {
-    if (b.dataset.act === "quick" && !confirm("Quick: maar één worp. Verlies je de ronde, dan drink je dubbel. Doen?")) return;
+    if (b.dataset.act === "quick" && !confirm("Quick: maar één worp, voor iedereen. Verlies je de ronde, dan drink je dubbel. Doen?")) return;
     send({ type: b.dataset.act });
   }
 }
