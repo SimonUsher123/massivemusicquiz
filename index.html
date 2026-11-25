@@ -6,6 +6,7 @@
 <title>Beukquiz</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Figtree:wght@400;600;800&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="presidenten.css">
 <style>
 /* Layout: quiz-show podium — stage left, live scoreboard right; stacks on phones. Single dark "studio" look by choice. */
 :root{
@@ -91,11 +92,15 @@ button.ghost{background:transparent;color:var(--fg);border:2px solid var(--line)
 
 <div class="wrap" id="app" hidden>
   <header>
-    <h1>BEUK<span>QUIZ</span></h1>
-    <div class="vol"><label for="vol">Volume</label><input id="vol" type="range" min="0" max="1" step="0.05" value="0.8"></div>
+    <h1 id="title">BEUK<span>QUIZ</span></h1>
+    <nav class="tabs" role="tablist" aria-label="Spellen">
+      <button type="button" role="tab" data-tab="quiz">Beukquiz</button>
+      <button type="button" role="tab" data-tab="pres">Presidenten</button>
+    </nav>
+    <div class="vol" id="volWrap"><label for="vol">Volume</label><input id="vol" type="range" min="0" max="1" step="0.05" value="0.8"></div>
   </header>
 
-  <div class="grid">
+  <div class="grid" id="quizView">
     <section class="stage">
       <!-- Categorie kiezen -->
       <div id="pick">
@@ -143,11 +148,43 @@ button.ghost{background:transparent;color:var(--fg);border:2px solid var(--line)
       <div id="board"></div>
     </aside>
   </div>
+
+  <!-- Presidenten -->
+  <section class="pres" id="presView" hidden>
+    <div class="panel" id="pSetup">
+      <h2>Nieuw spel</h2>
+      <p class="tag">Speel met 4 tot 7 spelers op één apparaat. Zijn er meer mensen, dan geef je het apparaat door zodra iemand aan zet is.</p>
+      <div class="field"><span class="lbl">Aantal spelers</span><div class="seg-row" id="pCount"></div></div>
+      <div class="seatlist" id="pSeatCfg"></div>
+      <button type="button" id="pStart">Start spel</button>
+      <details class="rules">
+        <summary>Spelregels</summary>
+        <ul>
+          <li>Volgorde laag naar hoog: 2, 3 … 10, B, V, H, A. De joker is het hoogst en kan elke kaart zijn, dus ook een paar aanvullen.</li>
+          <li>De eerste ronde begint wie klaver 2 heeft, daarna begint altijd de feut. Je legt 1 of meer kaarten van dezelfde waarde. De volgende legt evenveel kaarten met een hogere waarde, of past.</li>
+          <li>Wie past, doet niet meer mee in die slag. Past iedereen, dan begint wie als laatste legde een nieuwe slag.</li>
+          <li>Je mag met elke kaart uitgaan. De eerste die uit is wordt president, dan vicepresident; de voorlaatste wordt vice-feut, de laatste feut.</li>
+          <li>Volgende ronde: de feut geeft zijn 2 hoogste kaarten aan de president, die geeft er 2 naar keuze terug. Vice-feut en vicepresident ruilen er 1.</li>
+          <li>Staatsgreep: vier gelijke kaarten (geen joker) mag je na het ruilen altijd leggen, ook buiten je beurt. De ronde stopt meteen: jij wordt president, de president wordt feut, de rest burger. Er wordt opnieuw gedeeld en alleen president en feut ruilen.</li>
+        </ul>
+      </details>
+    </div>
+    <div id="pGame" hidden>
+      <div class="pbar"><span id="pRound">Ronde 1</span><button type="button" class="ghost mini" id="pQuit">Stoppen</button></div>
+      <div class="seats" id="pSeats"></div>
+      <div class="felt" id="pTable" aria-live="polite"></div>
+      <div class="actions" id="pActions"></div>
+      <div class="hand" id="pHand"></div>
+      <div class="plog" id="pLog"></div>
+    </div>
+    <div class="overlay" id="pOverlay" hidden><div class="dialog" id="pDialog" role="dialog" aria-modal="true"></div></div>
+  </section>
 </div>
 
 <audio id="audio" preload="auto" playsinline></audio>
 
 <script src="songs.js"></script>
+<script src="presidenten.js"></script>
 <script>
 const PLAY = 15, PAUSE = 5, LEAD = 5, PER_ROUND = 10;
 const PW_HASH = "ff5612d10fa460dc88c28154575727a7e063bd3491c7b59955fc3344ca057aa8";
