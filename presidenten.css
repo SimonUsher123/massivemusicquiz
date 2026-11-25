@@ -1,65 +1,109 @@
-/* Tabbladen + Presidenten. Zelfde studio-look als de quiz; kaarten zijn het enige lichte vlak. */
+/* Tabbladen + Presidenten. Zelfde studio-look als de quiz: ovale speltafel met houten rand, spelers eromheen. */
 .tabs{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px}
 .tabs button{padding:8px 16px;font-size:14px;border-radius:999px;background:transparent;color:var(--muted)}
 .tabs button.on{background:var(--accent);color:var(--bg)}
 button.hot{background:var(--hot);color:var(--bg)}
 button.mini{padding:6px 12px;font-size:13px}
+button.ghost.on{border-color:var(--accent);color:var(--accent)}
 
 .pres{display:flex;flex-direction:column;gap:14px}
 .pres .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:14px;max-width:560px;width:100%;margin:0 auto}
-.pres .panel>.tag{margin:0;line-height:1.5}
 .field{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .lbl{font-weight:800}
 .seg-row{display:flex;gap:6px}
 .seg{background:var(--bg);color:var(--fg);border:2px solid var(--line);padding:10px 18px;font-family:var(--mono)}
 .seg.on{border-color:var(--accent);color:var(--accent)}
 .seatlist{display:flex;flex-direction:column;gap:8px}
-.seatcfg{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.seatcfg{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center}
+.mini-ava{font-size:24px;width:32px;text-align:center}
 .seatcfg input[type=text]{font-size:16px;padding:10px 12px}
 .toggle{display:flex;border:2px solid var(--line);border-radius:10px;overflow:hidden}
 .toggle button{border-radius:0;background:transparent;color:var(--muted);padding:10px 12px;font-size:14px}
 .toggle button.on{background:var(--accent);color:var(--bg)}
-.rules{color:var(--muted);font-size:14px;line-height:1.5}
-.rules summary{cursor:pointer;font-weight:800;color:var(--fg)}
-.rules ul{padding-left:18px;margin:8px 0 0}
 
-#pGame{display:flex;flex-direction:column;gap:12px}
+#pGame{display:flex;flex-direction:column;gap:12px;max-width:980px;width:100%;margin:0 auto}
 .pbar{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.seats{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
-.seat{background:var(--panel);border:2px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px;min-width:0;display:flex;flex-direction:column;gap:3px}
-.seat.turn{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,176,46,.2)}
-.seat.mine{background:#2e1c40}
-.seat.out{opacity:.55}
-.sname{font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sinfo{color:var(--muted);font-family:var(--mono);font-size:12px}
-.stitle{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+
+/* ---- tafel ---- */
+.tbl{position:relative;width:100%;height:clamp(330px,50vh,520px)}
+.felt{position:absolute;inset:15% 11%;border-radius:50%;
+  background:radial-gradient(ellipse at 50% 42%,#3d2558 0%,#2a1840 55%,#1d1029 100%);
+  border:12px solid #5a3522;box-shadow:inset 0 0 0 3px #7a4a2e,inset 0 0 50px rgba(0,0,0,.55),0 14px 40px rgba(0,0,0,.5)}
+.pile{position:absolute;inset:0}
+.play{position:absolute;left:50%;top:46%;display:flex;gap:4px;
+  transform:translate(-50%,-50%) translateY(var(--dy)) scale(var(--sc)) rotate(var(--rot));opacity:var(--op);transition:opacity .4s,transform .4s}
+.play.won{filter:saturate(.6)}
+.fmsg{position:absolute;left:50%;bottom:9%;transform:translateX(-50%);text-align:center;width:80%;display:flex;flex-direction:column;align-items:center;gap:6px}
+.tmsg{font-weight:800;font-size:14px;color:var(--muted);background:rgba(0,0,0,.25);padding:4px 12px;border-radius:999px}
+.tmsg.hot{color:var(--hot)}
+.coupban{font-family:var(--display);color:var(--hot);font-size:clamp(20px,4vw,30px);letter-spacing:.04em}
+.result{background:rgba(14,7,20,.75);border-radius:12px;padding:10px 14px;font-size:14px;display:flex;flex-direction:column;gap:3px;text-align:left}
+.result .rh{font-family:var(--display);font-size:15px;color:var(--accent);margin-bottom:2px}
+.result .pos{font-family:var(--mono);color:var(--muted);display:inline-block;width:14px}
+.result .stitle{margin-left:4px}
+
+/* ---- spelers ---- */
+.seat{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;width:104px;text-align:center;z-index:2}
+.ava{position:relative;width:56px;height:56px;border-radius:50%;background:var(--panel);border:3px solid var(--line);font-size:31px;line-height:1;display:grid;place-items:center;transition:border-color .3s,box-shadow .3s}
+.seat.turn .ava{border-color:var(--accent);box-shadow:0 0 0 6px rgba(255,176,46,.28),0 0 24px rgba(255,176,46,.5);animation:beat 1.1s ease-in-out infinite}
+.seat.out .ava{opacity:.55}
+.crown{position:absolute;top:-17px;left:50%;transform:translateX(-50%) rotate(-8deg);font-size:20px}
+.bubble{position:absolute;right:-26px;top:-6px;background:var(--fg);color:var(--bg);font-size:11px;font-weight:800;padding:2px 7px;border-radius:10px 10px 10px 2px;white-space:nowrap}
+.bubble.out{background:var(--ok)}
+.nm{font-weight:800;font-size:14px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+.bot{font-size:11px}
+.cnt{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.stitle{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .t-pres{color:var(--accent)} .t-vp{color:var(--half)} .t-burger{color:var(--fg)} .t-vf{color:#ff9aae} .t-feut{color:var(--hot)}
+.openhand{position:absolute;left:50%;top:28px;display:flex;justify-content:center;transform:translate(-50%,-50%) translate(var(--ox),var(--oy));z-index:3}
+.openhand .card+.card{margin-left:-8px}
+@keyframes beat{50%{transform:scale(1.07)}}
 
-.felt{background:radial-gradient(ellipse at center,#2f1d42,#1f1330);border:2px dashed var(--line);border-radius:18px;min-height:170px;padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center}
-.trick{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
-.trick.old{opacity:.4}
-.cap{font-weight:800}
-.cap.muted,.sub{color:var(--muted);font-size:14px;font-weight:600}
-.coupban{font-family:var(--display);color:var(--hot);font-size:clamp(20px,5vw,30px);letter-spacing:.04em}
-.result h2{margin-bottom:6px}
-.result ol{margin:0;padding-left:22px;text-align:left;display:flex;flex-direction:column;gap:4px}
-.result li b{margin-right:6px}
+/* ---- jouw kant ---- */
+.dock{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.turnbar{text-align:center;font-weight:800;color:var(--muted);min-height:1.4em}
+.turnbar.me{color:var(--bg);background:var(--accent);border-radius:10px;padding:8px;font-family:var(--display);font-weight:400;letter-spacing:.04em;animation:glow 1.4s ease-in-out infinite}
+@keyframes glow{50%{box-shadow:0 0 0 4px rgba(255,176,46,.3)}}
+.hand{text-align:center;min-height:110px}
+.hand>.tag{margin:34px 0}
+.handhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.handlabel{font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.swapped{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px;margin-top:8px;font-size:12px;font-weight:800;color:var(--muted)}
+.swapped span{margin:0 4px 0 10px}
+.cards{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding-top:16px}
+.controls{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.opts{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;border:1px dashed var(--line);border-radius:10px;padding:8px 12px;margin-left:auto}
+.opts h3{font-family:var(--display);font-weight:400;font-size:13px;letter-spacing:.06em;color:var(--accent);margin:0;width:100%}
+.opt{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600}
+.opt select{font:inherit;font-weight:800;background:var(--bg);color:var(--fg);border:2px solid var(--line);border-radius:8px;padding:6px 8px}
 
-.actions{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
-.actions .msg{margin:0;color:var(--muted);line-height:1.45;max-width:60ch;min-height:1.45em}
-
-.hand{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 12px 16px;text-align:center;min-height:120px}
-.hand>.tag{margin:30px 0}
-.handlabel{font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
-.cards{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding-top:14px}
-
+/* ---- kaarten ---- */
 .card{display:inline-flex;flex-direction:column;justify-content:space-between;width:58px;height:84px;padding:6px 7px;border-radius:8px;background:#fbf7ff;color:#1a1022;border:2px solid #d9cfe3;font-family:var(--body);font-weight:800;box-shadow:0 2px 0 rgba(0,0,0,.35);text-align:left;flex:none;line-height:1}
 .card b{font-size:20px}
 .card i{font-style:normal;font-size:26px;align-self:flex-end}
 .card.red{color:#d3264a}
 .card.joker{background:linear-gradient(135deg,var(--accent),var(--hot));border-color:var(--accent)}
-.card.joker i{font-size:10px;letter-spacing:.04em}
+.card.joker i{font-size:10px;letter-spacing:.02em;white-space:nowrap}
+.card.back{background:repeating-linear-gradient(45deg,var(--hot) 0 6px,var(--accent) 6px 12px);border-color:#fbf7ff}
+.card.hid{visibility:hidden}
+.card.mini{width:22px;height:30px;padding:2px 3px;border-radius:4px;border-width:1px}
+.card.mini b{font-size:10px}
+.card.mini i{font-size:10px}
+.card.mini.joker i{display:none}
+/* eigen hand als waaier */
+.cards.fan{position:relative;height:132px;padding:0;display:block}
+.cards.fan .card{position:absolute;left:50%;top:22px;margin-left:-29px;transform-origin:50% 120%;
+  transform:translate(var(--x),var(--y)) rotate(var(--rot));box-shadow:-2px 2px 6px rgba(0,0,0,.35)}
+.cards.fan .card.sel{transform:translate(var(--x),calc(var(--y) - 20px)) rotate(var(--rot))}
+@media (hover:hover){.cards.fan .card:not(:disabled):not(.sel):hover{transform:translate(var(--x),calc(var(--y) - 8px)) rotate(var(--rot))}}
+/* kaartjes in de hand van de poppetjes */
+.mfan{position:absolute;right:-14px;bottom:-4px;width:22px;height:26px;pointer-events:none}
+.mfan i{position:absolute;left:4px;bottom:0;width:14px;height:20px;border-radius:3px;border:1px solid #fbf7ff;
+  background:repeating-linear-gradient(45deg,var(--hot) 0 3px,var(--accent) 3px 6px);transform-origin:50% 100%;transform:rotate(var(--r))}
+.flyer{position:fixed;z-index:50;margin:0;pointer-events:none}
 button.card{cursor:pointer;transition:transform .12s}
+button.card:disabled{opacity:1;cursor:default}
 button.card.fresh{border-color:var(--ok);box-shadow:0 0 0 2px var(--ok)}
 button.card.sel{transform:translateY(-12px);border-color:var(--accent);box-shadow:0 0 0 3px var(--accent)}
 button.card:focus-visible{outline:3px solid var(--hot);outline-offset:2px}
@@ -67,20 +111,33 @@ button.card:focus-visible{outline:3px solid var(--hot);outline-offset:2px}
 .plog{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
 .plog div:first-child{color:var(--fg)}
 
-.overlay{position:fixed;inset:0;background:rgba(14,7,20,.94);display:flex;align-items:center;justify-content:center;padding:20px;z-index:10}
-.dialog{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;max-width:420px;width:100%;display:flex;flex-direction:column;gap:14px;text-align:center}
+.overlay{position:fixed;inset:0;background:rgba(14,7,20,.94);display:flex;align-items:center;justify-content:center;padding:20px;z-index:60}
+.dialog{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;max-width:420px;width:100%;display:flex;flex-direction:column;gap:14px;text-align:center;align-items:center}
 .dialog .tag{margin:0}
 .dialog .big{font-size:clamp(26px,7vw,38px);color:var(--accent)}
+.bigava{font-size:64px;line-height:1}
 
-@media (max-width:560px){
-  .seats{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-  .seat{padding:6px 7px}
-  .sname{font-size:13px}
+@media (max-width:640px){
+  .tbl{height:clamp(340px,52vh,440px)}
+  .felt{inset:17% 9% 15%;border-width:8px}
+  .seat{width:78px}
+  .ava{width:44px;height:44px;font-size:24px;border-width:2px}
+  .crown{font-size:16px;top:-13px}
+  .bubble{right:-18px;font-size:10px}
+  .nm{font-size:12px}
+  .stitle{font-size:9px}
+  .openhand{top:22px}
+  .openhand .card+.card{margin-left:-11px}
   .card{width:44px;height:64px;padding:4px 5px;border-radius:6px}
   .card b{font-size:16px}
   .card i{font-size:19px}
   .card.joker i{font-size:8px}
+  .card.mini{width:18px;height:25px}
+  .cards.fan{height:118px}
+  .cards.fan .card{margin-left:-22px;top:20px}
+  .mfan{right:-12px;transform:scale(.85)}
+  .play .card{width:40px;height:58px}
   .cards{gap:4px}
-  .felt{min-height:130px}
+  .opts{margin-left:0;width:100%}
 }
-@media (prefers-reduced-motion:reduce){button.card{transition:none}}
+@media (prefers-reduced-motion:reduce){button.card,.play{transition:none}.seat.turn .ava,.turnbar.me{animation:none}}

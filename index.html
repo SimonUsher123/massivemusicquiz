@@ -153,28 +153,24 @@ button.ghost{background:transparent;color:var(--fg);border:2px solid var(--line)
   <section class="pres" id="presView" hidden>
     <div class="panel" id="pSetup">
       <h2>Nieuw spel</h2>
-      <p class="tag">Speel met 4 tot 7 spelers op één apparaat. Zijn er meer mensen, dan geef je het apparaat door zodra iemand aan zet is.</p>
       <div class="field"><span class="lbl">Aantal spelers</span><div class="seg-row" id="pCount"></div></div>
       <div class="seatlist" id="pSeatCfg"></div>
       <button type="button" id="pStart">Start spel</button>
-      <details class="rules">
-        <summary>Spelregels</summary>
-        <ul>
-          <li>Volgorde laag naar hoog: 2, 3 … 10, B, V, H, A. De joker is het hoogst en kan elke kaart zijn, dus ook een paar aanvullen.</li>
-          <li>De eerste ronde begint wie klaver 2 heeft, daarna begint altijd de feut. Je legt 1 of meer kaarten van dezelfde waarde. De volgende legt evenveel kaarten met een hogere waarde, of past.</li>
-          <li>Wie past, doet niet meer mee in die slag. Past iedereen, dan begint wie als laatste legde een nieuwe slag.</li>
-          <li>Je mag met elke kaart uitgaan. De eerste die uit is wordt president, dan vicepresident; de voorlaatste wordt vice-feut, de laatste feut.</li>
-          <li>Volgende ronde: de feut geeft zijn 2 hoogste kaarten aan de president, die geeft er 2 naar keuze terug. Vice-feut en vicepresident ruilen er 1.</li>
-          <li>Staatsgreep: vier gelijke kaarten (geen joker) mag je na het ruilen altijd leggen, ook buiten je beurt. De ronde stopt meteen: jij wordt president, de president wordt feut, de rest burger. Er wordt opnieuw gedeeld en alleen president en feut ruilen.</li>
-        </ul>
-      </details>
     </div>
     <div id="pGame" hidden>
       <div class="pbar"><span id="pRound">Ronde 1</span><button type="button" class="ghost mini" id="pQuit">Stoppen</button></div>
-      <div class="seats" id="pSeats"></div>
-      <div class="felt" id="pTable" aria-live="polite"></div>
-      <div class="actions" id="pActions"></div>
-      <div class="hand" id="pHand"></div>
+      <div class="tbl">
+        <div class="felt"><div class="pile" id="pPile"></div><div class="fmsg" id="pMsg" aria-live="polite"></div></div>
+        <div id="pSeats"></div>
+      </div>
+      <div class="dock">
+        <div class="turnbar" id="pTurn" aria-live="polite"></div>
+        <div class="hand" id="pHand"></div>
+        <div class="controls">
+          <div class="actions" id="pActions"></div>
+          <div class="opts" id="pOpts" hidden></div>
+        </div>
+      </div>
       <div class="plog" id="pLog"></div>
     </div>
     <div class="overlay" id="pOverlay" hidden><div class="dialog" id="pDialog" role="dialog" aria-modal="true"></div></div>
