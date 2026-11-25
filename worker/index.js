@@ -174,7 +174,8 @@ export class PresRoom {
     await this.state.storage.put("room", this.room);
     const due = this.room.G ? nextDue(this.room.G) : null;
     const idle = (this.room.touched || Date.now()) + IDLE_MS;
-    await this.state.storage.setAlarm(Math.min(due == null ? Infinity : due, idle));
+    // nooit een wekker in het verleden: die pakt Cloudflare soms pas veel later op
+    await this.state.storage.setAlarm(Math.max(Date.now() + 25, Math.min(due == null ? Infinity : due, idle)));
   }
 
   async alarm() {
@@ -184,7 +185,8 @@ export class PresRoom {
     if (now >= (room.touched || 0) + IDLE_MS && !this.state.getWebSockets().length) {
       await this.state.storage.deleteAll(); this.room = null; return;
     }
-    if (room.G && tick(room.G, now)) this.broadcast();
+    // de wekker gaat soms een paar ms te vroeg af; met wat speling gebeurt de stap dan toch nu
+    if (room.G && tick(room.G, now + 150)) this.broadcast();
     await this.save();
   }
 
