@@ -47,7 +47,7 @@ button.ghost.on{border-color:var(--accent);color:var(--accent)}
 .felt{position:absolute;inset:15% 11%;border-radius:50%;
   background:radial-gradient(ellipse at 50% 42%,#3d2558 0%,#2a1840 55%,#1d1029 100%);
   border:12px solid #5a3522;box-shadow:inset 0 0 0 3px #7a4a2e,inset 0 0 50px rgba(0,0,0,.55),0 14px 40px rgba(0,0,0,.5)}
-.pile{position:absolute;inset:0}
+.pile{position:absolute;inset:0;z-index:5;pointer-events:none}   /* boven open kaarten van spelers */
 .play{position:absolute;left:50%;top:46%;display:flex;gap:4px;
   transform:translate(-50%,-50%) translateY(var(--dy)) scale(var(--sc)) rotate(var(--rot));opacity:var(--op);transition:opacity .4s,transform .4s}
 .play.won{filter:saturate(.6)}
@@ -62,7 +62,7 @@ button.ghost.on{border-color:var(--accent);color:var(--accent)}
 
 /* ---- spelers ---- */
 .seat{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;width:104px;text-align:center;z-index:2}
-.ava{position:relative;width:56px;height:56px;border-radius:50%;background:var(--panel);border:3px solid var(--line);font-size:31px;line-height:1;display:grid;place-items:center;transition:border-color .3s,box-shadow .3s}
+.ava{position:relative;z-index:4;width:56px;height:56px;border-radius:50%;background:var(--panel);border:3px solid var(--line);font-size:31px;line-height:1;display:grid;place-items:center;transition:border-color .3s,box-shadow .3s}
 .seat.turn .ava{border-color:var(--accent);box-shadow:0 0 0 6px rgba(255,176,46,.28),0 0 24px rgba(255,176,46,.5);animation:beat 1.1s ease-in-out infinite}
 .seat.out .ava{opacity:.55}
 .crown{position:absolute;top:-17px;left:50%;transform:translateX(-50%) rotate(-8deg);font-size:20px}
@@ -75,8 +75,12 @@ button.ghost.on{border-color:var(--accent);color:var(--accent)}
 .bot{font-size:11px}
 .stitle{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .t-pres{color:var(--accent)} .t-vp{color:var(--half)} .t-burger{color:var(--fg)} .t-vf{color:#ff9aae} .t-feut{color:var(--hot)}
-.openhand{position:absolute;left:50%;top:28px;display:flex;justify-content:center;transform:translate(-50%,-50%) translate(var(--ox),var(--oy));z-index:3}
-.openhand .card+.card{margin-left:-8px}
+/* open kaarten: groot genoeg om te lezen, in rijtjes van max. 7 */
+.openhand{position:absolute;left:50%;top:28px;display:flex;flex-wrap:wrap;justify-content:center;gap:3px;width:max-content;max-width:212px;transform:translate(-50%,-50%) translate(var(--ox),var(--oy));z-index:3}
+.openhand .card.mini{width:27px;height:38px;padding:2px 3px;border-width:1px;box-shadow:0 1px 3px rgba(0,0,0,.5)}
+.openhand .card.mini b{font-size:13px}
+.openhand .card.mini i{font-size:12px}
+.openhand .card.mini.joker i{display:none}
 @keyframes beat{50%{transform:scale(1.07)}}
 
 /* ---- jouw kant ---- */
@@ -116,6 +120,10 @@ button.ghost.on{border-color:var(--accent);color:var(--accent)}
 .opts.off{visibility:hidden}
 .opts h3{font-family:var(--display);font-weight:400;font-size:13px;letter-spacing:.06em;color:var(--accent);margin:0;width:100%}
 .opt{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600}
+.shouts{display:flex;flex-wrap:wrap;gap:6px}
+.jokeras{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px;width:100%}
+.jokeras>span{font-weight:800;font-size:13px;color:var(--muted);margin-right:4px}
+.jokeras .seg{padding:6px 10px;font-size:14px}
 .opt select{font:inherit;font-weight:800;background:var(--bg);color:var(--fg);border:2px solid var(--line);border-radius:8px;padding:6px 8px}
 
 /* ---- kaarten ---- */
@@ -148,6 +156,24 @@ button.card.fresh{border-color:var(--ok);box-shadow:0 0 0 2px var(--ok)}
 button.card.sel{transform:translateY(-12px);border-color:var(--accent);box-shadow:0 0 0 3px var(--accent)}
 button.card:focus-visible{outline:3px solid var(--hot);outline-offset:2px}
 
+.pbar-r{display:flex;align-items:center;gap:10px}
+.pversion{font-family:var(--mono);font-size:11px;color:var(--muted);margin:0;text-transform:none;letter-spacing:0}
+#pSetup .pversion{text-align:center}
+.statsbox{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.statsbox summary{cursor:pointer;font-family:var(--display);font-size:13px;letter-spacing:.06em;color:var(--accent)}
+.statsbox summary span{font-family:var(--body);font-size:12px;color:var(--muted);letter-spacing:0;margin-left:6px}
+#pStatsBody{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px;margin-top:8px}
+#pStatsBody>.tag{grid-column:1/-1;margin:0}
+@media (max-width:640px){#pStatsBody{grid-template-columns:1fr}}
+.scroll{overflow-x:auto}
+table.stats{border-collapse:collapse;width:100%;font-size:13px}
+.stats th,.stats td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:center;font-variant-numeric:tabular-nums}
+.stats thead th{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:500}
+.stats tbody th{text-align:left;font-weight:700;white-space:nowrap}
+.stats tr.me{background:rgba(255,176,46,.1)}
+.stats td{font-weight:800}
+.recent{list-style:none;margin:0;padding:0;font-size:13px;display:flex;flex-direction:column;gap:3px;max-height:190px;overflow-y:auto}
+.recent .pos{font-family:var(--mono);color:var(--muted);display:inline-block;min-width:20px}
 .plog{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
 .plog div:first-child{color:var(--fg)}
 
@@ -166,8 +192,10 @@ button.card:focus-visible{outline:3px solid var(--hot);outline-offset:2px}
   .bubble{right:-18px;font-size:10px}
   .nm{font-size:12px}
   .stitle{font-size:9px}
-  .openhand{top:22px}
-  .openhand .card+.card{margin-left:-11px}
+  .openhand{top:22px;max-width:178px;gap:2px}
+  .openhand .card.mini{width:23px;height:33px}
+  .openhand .card.mini b{font-size:12px}
+  .openhand .card.mini i{font-size:11px}
   .card{width:44px;height:64px;padding:4px 5px;border-radius:6px}
   .card b{font-size:16px}
   .card i{font-size:19px}

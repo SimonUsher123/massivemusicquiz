@@ -4,7 +4,7 @@
 //  - online: het spel draait op de server (worker/index.js); elk apparaat krijgt alleen zijn eigen kaarten.
 // In beide gevallen tekent dit bestand een "view" van het spel (zie view() in de engine).
 import * as E from "./presidenten-engine.js";
-const {rn,rnPlural,cn,T,AVATARS,BOT_NAMES,STYLES,evalSet,isQuad}=E;
+const {rn,rnPlural,cn,T,AVATARS,BOT_NAMES,STYLES,SHOUTS,TITLES,VERSION,evalSet,isQuad,onlyJokers}=E;
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -76,11 +76,12 @@ $("pQuit").onclick=()=>{
   stopLocal();showPanel("setup");
 };
 renderSetup();
+document.querySelectorAll(".pversion").forEach(e=>e.textContent=`versie ${VERSION}`);
 
 // ---------- Sessie ----------
 // S: {mode:"local",G,base,viewer,timer} of {mode:"online",code,ws,V,lobby,host,online,botified,...}
 let S=null;
-const ui={sel:new Set(),selFor:null,coupWho:undefined,lastSeq:null,anim:null,handRects:null,pop:new Set(),V:null,says:{},chatSeen:null,sayT:null};
+const ui={jokerAs:null,sel:new Set(),selFor:null,coupWho:undefined,lastSeq:null,anim:null,handRects:null,pop:new Set(),V:null,says:{},chatSeen:null,sayT:null};
 function resetUi(){ui.sel.clear();ui.selFor=null;ui.coupWho=undefined;ui.lastSeq=null;ui.anim=null;ui.handRects=null;ui.pop.clear();ui.V=null;ui.says={};ui.chatSeen=null;renderChat()}
 // ballonnetje boven een poppetje (chat, muiten, wolkje); verdwijnt vanzelf
 function sayAt(i,text,cloud){ui.says[i]={text,cloud,until:Date.now()+(cloud?6000:5000)};
@@ -244,10 +245,11 @@ $("chatForm").onsubmit=e=>{e.preventDefault();const t=$("chatText").value.trim()
 const myTurnV=(V,i)=>V.phase==="play"&&!V.hold&&V.turn===i;
 function autoActsV(V,i){const p=V.players[i];
   return !!p&&p.human&&myTurnV(V,i)&&p.autoPass>0&&!!V.trick&&V.trick.value>p.autoPass}
-function canPlayV(V,i,cards){
+function canPlayV(V,i,cards,as){
   if(!myTurnV(V,i))return false;
   if(isQuad(cards)&&V.canCoup)return true;
-  const ev=evalSet(cards);if(!ev)return false;
+  if(onlyJokers(cards)&&!as)return false;     // eerst kiezen wat de joker is
+  const ev=evalSet(cards,as);if(!ev)return false;
   return !V.trick||(ev.count===V.trick.count&&ev.value>V.trick.value);
 }
 const handOf=(V,i)=>i==null?[]:V.players[i].hand||[];
@@ -285,6 +287,7 @@ function render(V,cover){
   renderSwap(V,v);
   renderSeats(V);renderFelt(V);renderTurn(V,v);renderHand(V,v);renderActions(V,v);renderOpts(V,v);
   $("pLog").innerHTML=V.log.map(t=>`<div>${esc(t)}</div>`).join("");
+  renderStats(V);
   renderOverlay(V,cover);
   ui.pop.clear();
   if(lastPlay)flyPlay(V);
@@ -302,7 +305,7 @@ function renderSeats(V){
       :V.phase==="play"&&p.passed?`<span class="bubble pas${ui.pop.has(i)?" pop":""}">pas</span>`
       :gone?'<span class="bubble off">weg</span>':"";
     // open kaarten liggen naast elkaar op tafel, voor de speler richting het midden
-    const open=p.open&&!p.out&&p.hand?`<div class="openhand" style="--ox:${(-Math.cos(a)*90).toFixed(0)}px;--oy:${(-Math.sin(a)*78).toFixed(0)}px">${p.hand.map(c=>cardHTML(c,{mini:true})).join("")}</div>`:"";
+    const open=p.open&&!p.out&&p.hand?`<div class="openhand" style="--ox:${(-Math.cos(a)*(innerWidth<640?34:90)).toFixed(0)}px;--oy:${(-Math.sin(a)*(innerWidth<640?70:78)).toFixed(0)}px">${p.hand.map(c=>cardHTML(c,{mini:true})).join("")}</div>`:"";
     // dichte kaarten in de hand van het poppetje (max 7 getekend)
     const m=Math.min(p.count,7);
     const fan=!p.open&&m?`<span class="mfan" aria-hidden="true">${Array.from({length:m},(_,k)=>`<i style="--r:${(k-(m-1)/2)*11}deg"></i>`).join("")}</span>`:"";
@@ -316,6 +319,21 @@ function renderSeats(V){
       ${say}<div class="ava">${p.avatar}${fan}${p.title==="President"?'<span class="crown" aria-hidden="true">👑</span>':""}${status}</div>
       <div class="nm">${esc(p.name)}${bot}${p.pres?` <span class="crowns">👑${p.pres}</span>`:""}</div>
       ${titleTag(p.title)}${muit}${open}${take}</div>`}).join("");
+}
+// scorebord: hoe vaak iedereen president … feut was, plus de laatste rondes
+const SHORT={President:"Pres.",Vicepresident:"Vice",Burger:"Burger","Vice-feut":"V-feut",Feut:"Feut"};
+function renderStats(V){
+  const H=V.history||[],P=V.players;
+  $("pStatsN").textContent=H.length?`na ${V.round-(V.phase==="roundEnd"?0:1)} ronde${V.round-(V.phase==="roundEnd"?0:1)===1?"":"s"}`:"";
+  if(!H.length){$("pStatsBody").innerHTML='<p class="tag">Na de eerste ronde staat hier wie hoe vaak president en feut was.</p>';return}
+  const order=P.map((p,i)=>i).sort((a,b)=>{const A=P[a].stats||{},B=P[b].stats||{};
+    return (B.President-A.President)||(B.Vicepresident-A.Vicepresident)||(A.Feut-B.Feut)||(A["Vice-feut"]-B["Vice-feut"])});
+  const rows=order.map(i=>{const st=P[i].stats||{};
+    return `<tr${i===V.me?' class="me"':""}><th scope="row">${P[i].avatar} ${esc(P[i].name)}</th>${TITLES.map(t=>`<td class="t-${TCLASS[t]}">${st[t]||""}</td>`).join("")}</tr>`}).join("");
+  const recent=[...H].reverse().map(h=>{const pi=h.titles.indexOf("President"),fi=h.titles.indexOf("Feut");
+    return `<li><span class="pos">${h.round}</span> 👑 ${esc(P[pi]?P[pi].name:"?")}${fi>=0?` · feut: ${esc(P[fi].name)}`:""}${h.coupBy!=null?' <span class="badge">staatsgreep</span>':""}</li>`}).join("");
+  $("pStatsBody").innerHTML=`<div class="scroll"><table class="stats"><thead><tr><th></th>${TITLES.map(t=>`<th scope="col" title="${t}">${SHORT[t]}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>
+    <ol class="recent">${recent}</ol>`;
 }
 // wie al uit is, ziet de titel die hij gaat krijgen
 function outTitle(V,i){const k=V.finish.indexOf(i),n=V.n;
@@ -386,9 +404,17 @@ function renderActions(V,v){
       const e=V.ex;
       if(e&&v===e.from)A.push(btn("give",`Ruilen met ${esc(P[e.to].name)}`,e.up||ui.sel.size===e.k?"":"disabled"));
     }else if(V.phase==="play"&&v!=null&&myTurnV(V,v)&&!autoActsV(V,v)){
-      const sel=selCards(V),ok=canPlayV(V,v,sel),cp=isQuad(sel)&&V.canCoup;
-      A.push(btn("play",cp?"Staatsgreep!":"Spelen",(cp?'class="hot" ':"")+(ok?"":"disabled")));
+      const sel=selCards(V),jk=onlyJokers(sel);
+      if(!jk)ui.jokerAs=null;
+      // alleen jokers gekozen: jij bepaalt wat ze zijn (alleen waardes die nu mogen)
+      if(jk&&ui.jokerAs&&!canPlayV(V,v,sel,ui.jokerAs))ui.jokerAs=null;
+      const ok=canPlayV(V,v,sel,jk?ui.jokerAs:undefined),cp=isQuad(sel)&&V.canCoup;
+      A.push(btn("play",cp?"Staatsgreep!":jk&&ui.jokerAs?`Speel als ${rn(ui.jokerAs)}`:"Spelen",(cp?'class="hot" ':"")+(ok?"":"disabled")));
       A.push(btn("pass","Passen",`class="ghost"${V.trick?"":" disabled"}`));
+      if(jk){
+        const vals=[2,3,4,5,6,7,8,9,10,11,12,13,14].filter(r=>canPlayV(V,v,sel,r));
+        A.push(`<div class="jokeras" role="group" aria-label="Joker als"><span>Joker als</span>${vals.map(r=>`<button type="button" class="seg${ui.jokerAs===r?" on":""}" data-act="jokeras" data-r="${r}" aria-pressed="${ui.jokerAs===r}">${rn(r)}</button>`).join("")||'<span class="tag">kan nu niet</span>'}</div>`);
+      }
     }else if(V.phase==="roundEnd"&&(local||v!=null))A.push(btn("next","Volgende ronde"));
     if(v!=null&&V.canCoup&&!(myTurnV(V,v)&&isQuad(selCards(V))))coupBtns();
     if(local&&humansV(V).length>1&&V.phase==="play"&&ui.coupWho===undefined)A.push(btn("coupdlg","Staatsgreep…",'class="ghost"'));
@@ -406,7 +432,7 @@ function renderOpts(V,v){
         <option value="0">uit</option>${[2,3,4,5,6,7,8,9,10,11,12,13].map(r=>`<option value="${r}"${p.autoPass===r?" selected":""}>${rn(r)}</option>`).join("")}
       </select></label>
     <button type="button" class="ghost mini${p.open?" on":""}" data-act="open" aria-pressed="${!!p.open}">${p.open?"Open spelen: aan":"Open spelen"}</button>
-    <button type="button" class="ghost mini" data-act="shout">☁️ Lijndansvereniging</button>`;
+    <span class="shouts">${[["laag","Hou 'm laag"],["muitje","Muitje"],["lijndans","Lijndansvereniging"]].map(([k,l])=>`<button type="button" class="ghost mini" data-act="shout" data-k="${k}" title="${esc(SHOUTS[k])}">☁️ ${l}</button>`).join("")}</span>`;
 }
 function renderOverlay(V,coverFor){
   const o=$("pOverlay"),P=V.players;
@@ -498,11 +524,13 @@ function onAct(e){
     case "give":{const h=V.ex;if(!h||v!==h.from)return;
       const ids=h.up?h.forced||[]:selCards(V).map(c=>c.id);if(ids.length!==h.k)return;
       ui.sel.clear();send({type:"give",ids});break}
-    case "play":{const c=selCards(V);if(!canPlayV(V,v,c))return;grabHand(c);ui.sel.clear();send({type:"play",ids:c.map(x=>x.id)});break}
+    case "jokeras":ui.jokerAs=+b.dataset.r;update();break;
+    case "play":{const c=selCards(V),as=onlyJokers(c)?ui.jokerAs:undefined;if(!canPlayV(V,v,c,as))return;
+      grabHand(c);ui.sel.clear();ui.jokerAs=null;send(as?{type:"play",ids:c.map(x=>x.id),as}:{type:"play",ids:c.map(x=>x.id)});break}
     case "pass":if(myTurnV(V,v)&&V.trick){ui.sel.clear();send({type:"pass"})}break;
     case "next":send({type:"next"});break;
     case "coup":{const r=+b.dataset.r;grabHand(handOf(V,v).filter(c=>!c.j&&c.r===r).slice(0,4));ui.sel.clear();ui.coupWho=undefined;send({type:"coup",r});break}
-    case "shout":send({type:"shout"});break;
+    case "shout":send({type:"shout",k:b.dataset.k});break;
     case "coupdlg":ui.coupWho=null;update();break;
     case "coupwho":ui.coupWho=+b.dataset.i;update();break;
     case "coupcancel":ui.coupWho=undefined;update();break;
@@ -515,6 +543,9 @@ function onAct(e){
 addEventListener("resize",()=>update());
 $("pActions").onclick=onAct;$("pDialog").onclick=onAct;$("pOpts").onclick=onAct;$("pSeats").onclick=onAct;
 $("pOpts").onchange=e=>{if(e.target.dataset.opt==="autopass")send({type:"autopass",r:+e.target.value})};
+
+// alleen lokaal (wrangler dev): spelstand bekijken en klaarzetten om te testen
+if(location.hostname==="localhost"||location.hostname==="127.0.0.1")window.__pres={get S(){return S},update};
 
 // via een gedeelde link binnengekomen: meteen naar dat spel
 if(joinCode){cfg.myName?connect(joinCode,false):askNameAndJoin(joinCode)}
