@@ -1,0 +1,23 @@
+{
+  /*
+   * massivemusicquiz: de quiz en Presidenten als statische bestanden (public/), plus een kleine server voor
+   * online Presidenten: worker/index.js met één Durable Object per spel (kamer). Elke push naar main wordt door
+   * Cloudflare Workers Builds gebouwd en uitgerold.
+   *
+   * Alleen /ws/<CODE> gaat naar de Worker (de WebSocket van een apparaat); al het andere is een gewoon bestand.
+   * Lokaal: `npx wrangler dev`.
+   */
+  "name": "massivemusicquiz",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-08-20",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/ws/*"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "PresRoom" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["PresRoom"] }],
+  "observability": { "enabled": true }
+}

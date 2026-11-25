@@ -152,27 +152,44 @@ button.ghost{background:transparent;color:var(--fg);border:2px solid var(--line)
   <!-- Presidenten -->
   <section class="pres" id="presView" hidden>
     <div class="panel" id="pSetup">
-      <h2>Nieuw spel</h2>
+      <h2>Online spelen</h2>
+      <p class="tag">Iedereen op een eigen telefoon of computer. Je krijgt een link om te delen; lege plekken vult de computer aan.</p>
+      <div class="online-row">
+        <input type="text" id="pMyName" maxlength="14" placeholder="Jouw naam" aria-label="Jouw naam" autocomplete="nickname">
+        <button type="button" id="pCreate">Maak online spel</button>
+      </div>
+      <hr>
+      <h2>Op dit apparaat</h2>
       <div class="field"><span class="lbl">Aantal spelers</span><div class="seg-row" id="pCount"></div></div>
       <div class="seatlist" id="pSeatCfg"></div>
+      <div class="field"><span class="lbl">Computers spelen</span><div class="seg-row wrap" id="pStyle"></div></div>
       <button type="button" id="pStart">Start spel</button>
     </div>
+    <div class="panel" id="pLobby" hidden><div id="lobbyMain"></div></div>
     <div id="pGame" hidden>
       <div class="pbar"><span id="pRound">Ronde 1</span><button type="button" class="ghost mini" id="pQuit">Stoppen</button></div>
       <div class="tbl">
         <div class="felt"><div class="pile" id="pPile"></div><div class="fmsg" id="pMsg" aria-live="polite"></div></div>
         <div id="pSeats"></div>
+        <div class="swapped" id="pSwap" aria-label="Geruild"></div>
       </div>
       <div class="dock">
         <div class="turnbar" id="pTurn" aria-live="polite"></div>
+        <div class="actions" id="pActions"></div>
         <div class="hand" id="pHand"></div>
-        <div class="controls">
-          <div class="actions" id="pActions"></div>
-          <div class="opts" id="pOpts" hidden></div>
-        </div>
+        <div class="opts off" id="pOpts"></div>
       </div>
       <div class="plog" id="pLog"></div>
     </div>
+    <div class="chat" id="pChat" hidden>
+      <h3>Chat</h3>
+      <div class="chatlist" id="chatList" aria-live="polite"></div>
+      <form class="chatform" id="chatForm" autocomplete="off">
+        <input type="text" id="chatText" maxlength="200" placeholder="Zeg iets tegen de tafel" aria-label="Chatbericht">
+        <button type="submit">Stuur</button>
+      </form>
+    </div>
+    <div class="toast" id="pToast" role="status" hidden></div>
     <div class="overlay" id="pOverlay" hidden><div class="dialog" id="pDialog" role="dialog" aria-modal="true"></div></div>
   </section>
 </div>
@@ -180,7 +197,7 @@ button.ghost{background:transparent;color:var(--fg);border:2px solid var(--line)
 <audio id="audio" preload="auto" playsinline></audio>
 
 <script src="songs.js"></script>
-<script src="presidenten.js"></script>
+<script type="module" src="presidenten.js"></script>
 <script>
 const PLAY = 15, PAUSE = 5, LEAD = 5, PER_ROUND = 10;
 const PW_HASH = "ff5612d10fa460dc88c28154575727a7e063bd3491c7b59955fc3344ca057aa8";
