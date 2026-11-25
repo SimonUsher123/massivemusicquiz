@@ -76,6 +76,14 @@ button.ghost{background:transparent;color:var(--fg);border:2px solid var(--line)
 .phone{display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer}
 .phone input{width:20px;height:20px;accent-color:var(--accent)}
 .vol{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px}
+.online-box{display:flex;flex-direction:column;gap:12px;margin-bottom:18px}
+.online-box hr{border:0;border-top:1px solid var(--line);margin:6px 0 0;width:100%}
+.online-box .tag{margin:0;line-height:1.5}
+.qlobby{display:flex;flex-direction:column;gap:14px}
+.qsound{margin-top:12px;width:100%}
+.row.off{opacity:.5}
+.human{font-size:12px}
+.board .chat{margin-top:16px;padding:0;border:0;background:transparent}
 @media (prefers-reduced-motion:reduce){.bar>i{transition:none}}
 </style>
 </head>
@@ -104,8 +112,17 @@ button.ghost{background:transparent;color:var(--fg);border:2px solid var(--line)
     <section class="stage">
       <!-- Categorie kiezen -->
       <div id="pick">
-        <h2>Kies een categorie</h2>
-        <p class="tag">10 willekeurige nummers. 15 seconden luisteren, 5 seconden pauze. Typ artiest en titel en druk op Enter, in elke volgorde en in losse stukjes.</p>
+        <div class="online-box" id="qOnline">
+          <h2>Online quiz</h2>
+          <p class="tag">Samen spelen, ieder op een eigen telefoon. Je krijgt een link om te delen; lege plekken vult de computer aan.</p>
+          <div class="online-row">
+            <input type="text" id="qName" maxlength="14" placeholder="Jouw naam" aria-label="Jouw naam" autocomplete="nickname">
+            <button type="button" id="qCreate">Maak online quiz</button>
+          </div>
+          <hr>
+        </div>
+        <h2 id="pickTitle">Kies een categorie</h2>
+        <p class="tag" id="pickTag">10 willekeurige nummers. 15 seconden luisteren, 5 seconden pauze. Typ artiest en titel en druk op Enter, in elke volgorde en in losse stukjes.</p>
         <div class="cats" id="cats"></div>
       </div>
 
@@ -141,12 +158,26 @@ button.ghost{background:transparent;color:var(--fg);border:2px solid var(--line)
 
       <!-- Einde ronde -->
       <div class="center" id="end" hidden></div>
+
+      <!-- Online: wachtruimte en wachten op de host -->
+      <div class="qlobby" id="qLobby" hidden></div>
+      <div class="center" id="qWait" hidden></div>
+      <button type="button" class="ghost qsound" id="qSound" hidden>🔊 Tik hier voor geluid</button>
     </section>
 
     <aside class="board">
       <h2>Stand</h2>
       <div id="board"></div>
+      <div class="chat" id="qChat" hidden>
+        <h3>Chat</h3>
+        <div class="chatlist" id="qChatList" aria-live="polite"></div>
+        <form class="chatform" id="qChatForm" autocomplete="off">
+          <input type="text" id="qChatText" maxlength="200" placeholder="Zeg iets" aria-label="Chatbericht">
+          <button type="submit">Stuur</button>
+        </form>
+      </div>
     </aside>
+    <div class="toast" id="qToast" role="status" hidden></div>
   </div>
 
   <!-- Presidenten -->
@@ -203,218 +234,6 @@ button.ghost{background:transparent;color:var(--fg);border:2px solid var(--line)
 
 <script src="songs.js"></script>
 <script type="module" src="presidenten.js"></script>
-<script>
-const PLAY = 15, PAUSE = 5, LEAD = 5, PER_ROUND = 10;
-const PW_HASH = "ff5612d10fa460dc88c28154575727a7e063bd3491c7b59955fc3344ca057aa8";
-const $ = id => document.getElementById(id);
-
-// ---------- Inloggen ----------
-async function sha256(t){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
-function store(k,v){try{v===undefined?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}
-function load(k){try{return localStorage.getItem(k)}catch(e){return null}}
-function showApp(){$("login").hidden=true;$("app").hidden=false;renderCats();renderBoard()}
-$("login").addEventListener("submit",async e=>{
-  e.preventDefault();
-  if(await sha256($("pw").value)===PW_HASH){store("bq_pw",PW_HASH);showApp()}
-  else{$("pwErr").hidden=false;$("pw").select()}
-});
-
-// ---------- Tekst vergelijken ----------
-const STOP=new Set(["the","a","an","and","feat","ft","n","o","de","het","een"]);
-const NUM={"0":"zero","1":"one","2":"two","3":"three","4":"four","5":"five","6":"six","7":"seven","8":"eight","9":"nine","10":"ten","30":"thirty"};
-for(const [k,v] of Object.entries({...NUM})) NUM[v]=k;
-function words(s){return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[.'’\-\/!?]/g,"").replace(/[^a-z0-9\s]/g," ").split(/\s+/).filter(Boolean)}
-function required(s){const all=words(s);const req=all.filter(w=>!STOP.has(w)&&(w.length>1||/\d/.test(w)));return req.length?req:all}
-function lev(a,b){const m=a.length,n=b.length,d=[];for(let i=0;i<=m;i++){d[i]=[i];for(let j=1;j<=n;j++)d[i][j]=i?0:j}
-  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++){const c=a[i-1]===b[j-1]?0:1;
-    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c);
-    if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])d[i][j]=Math.min(d[i][j],d[i-2][j-2]+1)}
-  return d[m][n]}
-function tol(len){return len<=3?0:len<=7?1:2}
-function hasWord(target,typed){const alts=[target];if(NUM[target])alts.push(NUM[target]);
-  return alts.some(alt=>[...typed].some(w=>lev(w,alt)<=tol(alt.length)))}
-function parseSong(str){
-  const [art,title]=str.split("|");
-  return {raw:str, show:art.split(" / ")[0].replace(/ \+ /g," & ")+" – "+title,
-    artists:art.split(" + ").map(a=>a.split(" / ").map(required)),
-    title:required(title.replace(/\(.*?\)/g,"")),
-    q:art.split(" + ").map(a=>a.split(" / ")[0]).join(" ")+" "+title.replace(/\(.*?\)/g,"")};
-}
-function check(song,typed){
-  return {a:song.artists.every(alts=>alts.some(ws=>ws.every(w=>hasWord(w,typed)))),
-          t:song.title.every(w=>hasWord(w,typed))};
-}
-
-// ---------- iTunes-fragmenten (JSONP) ----------
-function jsonp(url){return new Promise((res,rej)=>{
-  const cb="cb"+Math.random().toString(36).slice(2),s=document.createElement("script");
-  const done=()=>{clearTimeout(to);delete window[cb];s.remove()};
-  const to=setTimeout(()=>{done();rej(new Error("timeout"))},9000);
-  window[cb]=d=>{done();res(d)};s.onerror=()=>{done();rej(new Error("blocked"))};
-  s.src=url+"&callback="+cb;document.body.appendChild(s);
-})}
-async function findPreview(song){
-  try{
-    const d=await jsonp("https://itunes.apple.com/search?entity=song&limit=10&country=NL&term="+encodeURIComponent(song.q));
-    const key=song.artists[0][0][0];
-    const hit=(d.results||[]).find(r=>r.previewUrl&&words(r.artistName).some(w=>lev(w,key)<=1));
-    return hit?hit.previewUrl:null;
-  }catch(e){return null}
-}
-function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
-
-// ---------- Spelers ----------
-const BOT_NAMES=[["DJ Henk",.85],["Ingrid",.7],["Muziekmeester",.6],["Kees",.5],["Fleur",.45],["Babbelaar",.35],["Opa Joop",.25]];
-const players=[{name:"Jij",me:true,total:0,round:0,cups:[0,0,0],hist:[],prevRank:null}]
-  .concat(BOT_NAMES.map(([n,s])=>({name:n,skill:s,total:0,round:0,cups:[0,0,0],hist:[],prevRank:null})));
-const me=players[0];
-
-// ---------- Categorie en laden ----------
-const audio=$("audio");audio.volume=.8;
-$("vol").addEventListener("input",e=>audio.volume=+e.target.value);
-let catKey=null,order=[],loadToken=0,roundNo=0;
-
-function show(id){["pick","ready","game","end"].forEach(x=>$(x).hidden=x!==id)}
-function renderCats(){
-  $("cats").innerHTML=Object.entries(CATEGORIES).map(([k,c])=>`<button class="cat" data-k="${k}"><b>${c.name}</b><span>${c.songs.length} nummers</span></button>`).join("");
-  $("cats").querySelectorAll(".cat").forEach(b=>b.onclick=()=>chooseCategory(b.dataset.k));
-}
-async function chooseCategory(k){
-  catKey=k;const token=++loadToken;
-  show("ready");$("readyTitle").textContent=CATEGORIES[k].name;
-  $("startBtn").disabled=true;$("loadMsg").className="";$("loadMsg").textContent=`Fragmenten laden… 0 / ${PER_ROUND}`;
-  order=[];
-  const pool=shuffle(CATEGORIES[k].songs).map(parseSong);
-  // laad in groepjes tot er 10 werkende fragmenten zijn
-  for(let i=0;i<pool.length&&order.length<PER_ROUND;i+=6){
-    const batch=pool.slice(i,i+6);
-    const urls=await Promise.all(batch.map(findPreview));
-    if(token!==loadToken)return;
-    batch.forEach((s,j)=>{if(urls[j]&&order.length<PER_ROUND){s.url=urls[j];order.push(s)}});
-    $("loadMsg").textContent=`Fragmenten laden… ${order.length} / ${PER_ROUND}`;
-  }
-  if(!order.length){$("loadMsg").className="err";$("loadMsg").textContent="Kon geen fragmenten ophalen. Controleer je internetverbinding en kies opnieuw.";return}
-  $("loadMsg").textContent=`${order.length} nummers klaar. Druk op start als je er klaar voor bent.`;
-  $("startBtn").disabled=false;
-}
-$("phoneMode").checked=load("bq_phone")==="1";
-$("phoneMode").onchange=e=>store("bq_phone",e.target.checked?"1":undefined);
-$("backBtn").onclick=()=>{loadToken++;show("pick")};
-$("startBtn").onclick=()=>{
-  // iPhone: geluid ontgrendelen tijdens de tik
-  audio.src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";audio.play().catch(()=>{});
-  startRound();
-};
-
-// ---------- Spelverloop ----------
-let idx=0,typed=new Set(),state={},timers=[],tick=null,cupsGiven=0;
-
-function startRound(){
-  roundNo++;idx=0;players.forEach(p=>{p.round=0;p.hist=[]});
-  show("game");
-  state={};players.forEach(p=>state[p.name]={});updateMine();renderBoard();
-  $("songNo").textContent=`${CATEGORIES[catKey].name} · Ronde ${roundNo}`;
-  $("phase").textContent="Maak je klaar";$("clock").classList.add("pause");
-  $("guess").disabled=true;$("guess").value="";$("typed").textContent="";$("feed").innerHTML="";$("reveal").hidden=true;
-  countdown(LEAD,playSong);
-}
-
-function playSong(){
-  const song=order[idx];
-  typed=new Set();state={};cupsGiven=0;players.forEach(p=>state[p.name]={a:false,t:false,cup:0,full:false});
-  $("songNo").textContent=`${CATEGORIES[catKey].name} · Nummer ${idx+1} / ${order.length}`;
-  $("phase").textContent="Luisteren";$("clock").classList.remove("pause");
-  $("reveal").hidden=true;$("feed").innerHTML="";$("typed").textContent="";
-  $("guess").disabled=false;$("guess").value="";$("guess").focus();
-  updateMine();renderBoard();
-  audio.src=song.url;audio.currentTime=0;audio.play().catch(()=>{});
-  scheduleBots();
-  countdown(PLAY,()=>endSong(song));
-}
-
-function award(p){
-  const s=state[p.name];
-  if(s.a&&s.t&&!s.full){s.full=true;if(cupsGiven<3){cupsGiven++;s.cup=cupsGiven;p.cups[cupsGiven-1]++}
-    feed(`${p.me?"Jij hebt":p.name+" heeft"} alles goed${s.cup?` · beker ${s.cup}`:""}`)}
-}
-
-function scheduleBots(){
-  const slow=$("phoneMode").checked?1.4:1;
-  players.filter(p=>!p.me).forEach(p=>{
-    const knowA=Math.random()<p.skill,knowT=Math.random()<p.skill*.9;
-    const tA=(2+Math.random()*12*(1.2-p.skill))*slow,tT=tA+Math.random()*4*slow;
-    if(knowA&&tA<PLAY)timers.push(setTimeout(()=>{state[p.name].a=true;if(!(knowT&&tT<PLAY))feed(`${p.name} heeft de artiest`);award(p);renderBoard()},tA*1000));
-    if(knowT&&tT<PLAY)timers.push(setTimeout(()=>{state[p.name].t=true;if(!state[p.name].a)feed(`${p.name} heeft de titel`);award(p);renderBoard()},tT*1000));
-  });
-}
-
-function countdown(sec,done){
-  clearInterval(tick);const start=Date.now();
-  const step=()=>{const left=Math.max(0,sec-(Date.now()-start)/1000);
-    $("clock").textContent=Math.ceil(left);$("barFill").style.transform=`scaleX(${left/sec})`;
-    if(left<=0){clearInterval(tick);done()}};
-  step();tick=setInterval(step,200);
-}
-
-function endSong(song){
-  audio.pause();timers.forEach(clearTimeout);timers=[];
-  $("guess").disabled=true;
-  players.forEach(p=>{const s=state[p.name];const pts=(s.a?.5:0)+(s.t?.5:0);p.round+=pts;p.total+=pts;p.hist.push(pts)});
-  const s=state[me.name];
-  $("reveal").hidden=false;
-  $("reveal").innerHTML=`<span class="tag">Het was</span><b>${song.show}</b><span class="tag">Jij: ${fmt((s.a?.5:0)+(s.t?.5:0))} punt</span>`;
-  renderBoard();
-  $("phase").textContent="Pauze";$("clock").classList.add("pause");
-  countdown(PAUSE,()=>{idx++;idx<order.length?playSong():endRound()});
-}
-
-function endRound(){
-  const ranked=[...players].sort((a,b)=>b.round-a.round||b.cups[0]-a.cups[0]);
-  const lines=[];
-  ranked.forEach((p,i)=>{const r=i+1;
-    if(p.prevRank&&p.prevRank<=3&&r<=3){const lvl=Math.max(p.prevRank,r);const bonus=lvl===1?3:lvl===2?2:1;p.total+=bonus;
-      lines.push(`${p.me?"Jij krijgt":p.name+" krijgt"} +${bonus} bonus (twee rondes op rij top ${lvl})`)}
-    p.prevRank=r});
-  const myRank=ranked.indexOf(me)+1;
-  show("end");
-  $("end").innerHTML=`<h1>${myRank===1?"WINNAAR!":"Plek "+myRank}</h1>
-    <p>Je scoorde ${fmt(me.round)} van ${order.length} punten deze ronde.</p>
-    <p>${lines.length?lines.join("<br>"):"Twee rondes op rij in de top 3 levert een bonus op."}</p>
-    <div class="btns"><button id="again">Nog een ronde ${CATEGORIES[catKey].name}</button><button class="ghost" id="other">Andere categorie</button></div>`;
-  $("again").onclick=()=>chooseCategory(catKey);
-  $("other").onclick=()=>show("pick");
-  renderBoard();
-}
-
-// ---------- Jouw invoer ----------
-$("form").addEventListener("submit",e=>{
-  e.preventDefault();const v=$("guess").value;$("guess").value="";
-  if($("guess").disabled)return;
-  words(v).forEach(w=>typed.add(w));
-  $("typed").textContent=[...typed].join(" · ");
-  const r=check(order[idx],typed),s=state[me.name];
-  if(r.a)s.a=true;if(r.t)s.t=true;
-  award(me);updateMine();renderBoard();
-});
-function updateMine(){const s=state[me.name]||{};
-  $("chipA").classList.toggle("ok",!!s.a);$("chipT").classList.toggle("ok",!!s.t);
-  $("myCup").innerHTML=s.cup?`<span class="cup">${s.cup}</span>`:""}
-function feed(t){const d=document.createElement("div");d.textContent=t;$("feed").prepend(d)}
-function fmt(n){return n.toFixed(1).replace(".",",")}
-
-function renderBoard(){
-  const ranked=[...players].sort((a,b)=>b.total-a.total||b.cups[0]-a.cups[0]);
-  $("board").innerHTML=ranked.map((p,i)=>{const s=state[p.name]||{};
-    const dots=p.hist.map(h=>`<span class="dot ${h===1?"full":h?"half":""}"></span>`).join("");
-    const cupNow=s.cup?` <span class="cup">${s.cup}</span>`:"";
-    return `<div class="row${p.me?" me":""}"><span class="pos">${i+1}</span>
-      <div class="name"><span>${p.name}${cupNow}</span><div class="dots">${dots}</div></div>
-      <span class="cups">🏆${p.cups[0]}·${p.cups[1]}·${p.cups[2]}</span>
-      <span class="pts">${fmt(p.total)}</span></div>`}).join("");
-}
-
-// pas inloggen als alles hierboven geladen is
-if(load("bq_pw")===PW_HASH) showApp(); else {$("login").hidden=false;$("pw").focus()}
-</script>
+<script type="module" src="quiz.js"></script>
 </body>
 </html>

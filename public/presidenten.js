@@ -25,7 +25,7 @@ function tab(name){
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>tab(b.dataset.tab));
 const joinCode=(new URLSearchParams(location.search).get("spel")||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
 let startTab="quiz";try{startTab=localStorage.getItem("bq_tab")||"quiz"}catch(e){}
-tab(joinCode?"pres":startTab);
+tab(joinCode?"pres":new URLSearchParams(location.search).get("quiz")?"quiz":startTab);
 
 // ---------- Instellingen ----------
 let cfg=loadCfg();
