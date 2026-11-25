@@ -4,7 +4,7 @@
    * online Presidenten: worker/index.js met één Durable Object per spel (kamer). Elke push naar main wordt door
    * Cloudflare Workers Builds gebouwd en uitgerold.
    *
-   * Alleen /ws/<CODE> en /qws/<CODE> gaan naar de Worker (de WebSocket van een apparaat); al het andere is een gewoon bestand.
+   * Alleen /ws/<CODE>, /qws/<CODE> en /mws/<CODE> gaan naar de Worker (de WebSocket van een apparaat); al het andere is een gewoon bestand.
    * Lokaal: `npx wrangler dev`.
    */
   "name": "massivemusicquiz",
@@ -13,17 +13,19 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/ws/*", "/qws/*"]
+    "run_worker_first": ["/ws/*", "/qws/*", "/mws/*"]
   },
   "durable_objects": {
     "bindings": [
       { "name": "ROOMS", "class_name": "PresRoom" },
-      { "name": "QUIZ", "class_name": "QuizRoom" }
+      { "name": "QUIZ", "class_name": "QuizRoom" },
+      { "name": "MEX", "class_name": "MexRoom" }
     ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["PresRoom"] },
-    { "tag": "v2", "new_sqlite_classes": ["QuizRoom"] }
+    { "tag": "v2", "new_sqlite_classes": ["QuizRoom"] },
+    { "tag": "v3", "new_sqlite_classes": ["MexRoom"] }
   ],
   "observability": { "enabled": true }
 }

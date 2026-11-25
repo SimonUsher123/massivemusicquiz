@@ -13,11 +13,11 @@ const FLY=matchMedia("(prefers-reduced-motion: reduce)").matches?0:T.fly;
 const CODE_CHARS="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 // ---------- Tabbladen ----------
-const TABS={quiz:{h:"BEUK<span>QUIZ</span>",t:"Beukquiz"},pres:{h:"PRESI<span>DENTEN</span>",t:"Presidenten"}};
+const TABS={quiz:{h:"BEUK<span>QUIZ</span>",t:"Beukquiz"},pres:{h:"PRESI<span>DENTEN</span>",t:"Presidenten"},mex:{h:"ME<span>XEN</span>",t:"Mexen"}};
 function tab(name){
   if(!TABS[name])name="quiz";
   document.querySelectorAll(".tabs button").forEach(b=>{const on=b.dataset.tab===name;b.classList.toggle("on",on);b.setAttribute("aria-selected",on)});
-  $("quizView").hidden=name!=="quiz";$("presView").hidden=name!=="pres";$("volWrap").hidden=name!=="quiz";
+  $("quizView").hidden=name!=="quiz";$("presView").hidden=name!=="pres";$("mexView").hidden=name!=="mex";$("volWrap").hidden=name!=="quiz";
   $("title").innerHTML=TABS[name].h;document.title=TABS[name].t;
   if(name!=="quiz"){const a=$("audio");if(a&&!a.paused)a.pause()}
   try{localStorage.setItem("bq_tab",name)}catch(e){}
@@ -25,7 +25,7 @@ function tab(name){
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>tab(b.dataset.tab));
 const joinCode=(new URLSearchParams(location.search).get("spel")||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
 let startTab="quiz";try{startTab=localStorage.getItem("bq_tab")||"quiz"}catch(e){}
-tab(joinCode?"pres":new URLSearchParams(location.search).get("quiz")?"quiz":startTab);
+tab(joinCode?"pres":new URLSearchParams(location.search).get("mex")?"mex":new URLSearchParams(location.search).get("quiz")?"quiz":startTab);
 
 // ---------- Instellingen ----------
 let cfg=loadCfg();

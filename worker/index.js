@@ -3,6 +3,7 @@
  *
  *   /ws/<CODE>   één WebSocket per apparaat, naar de kamer (Durable Object) van dat Presidenten-spel
  *   /qws/<CODE>  idem voor een online Beukquiz (worker/quiz-room.js)
+ *   /mws/<CODE>  idem voor online Mexen (worker/mex-room.js)
  *   al het andere  de statische site uit public/ (via de ASSETS-binding)
  *
  * Het spel zelf draait hier, in de kamer, met dezelfde spelregels als in de browser (public/presidenten-engine.js).
@@ -13,6 +14,7 @@
 import { newGame, act, tick, nextDue, view, setHuman, styleValue, STYLES, AVATARS, BOT_NAMES } from "../public/presidenten-engine.js";
 
 export { QuizRoom } from "./quiz-room.js";
+export { MexRoom } from "./mex-room.js";
 
 const MAX = 7, MIN = 4;
 const IDLE_MS = 24 * 3600 * 1000;          // een kamer zonder verkeer ruimt zichzelf na een dag op
@@ -22,10 +24,10 @@ const cleanName = (s) => String(s || "").replace(/\s+/g, " ").trim().slice(0, 14
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    const m = url.pathname.match(/^\/(q?ws)\/([A-Z0-9]{4,6})$/);
+    const m = url.pathname.match(/^\/(q?ws|mws)\/([A-Z0-9]{4,6})$/);
     if (m) {
       if (request.headers.get("Upgrade") !== "websocket") return new Response("Hier hoort een WebSocket.", { status: 426 });
-      const ns = m[1] === "qws" ? env.QUIZ : env.ROOMS;
+      const ns = m[1] === "qws" ? env.QUIZ : m[1] === "mws" ? env.MEX : env.ROOMS;
       return ns.get(ns.idFromName(m[2])).fetch(request);
     }
     return env.ASSETS.fetch(request);

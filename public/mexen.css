@@ -1,0 +1,71 @@
+/* Mexen: bouwt voort op presidenten.css (tafel, poppetjes, panelen, chat). Hier alleen de stenen en wat extra's. */
+.mex .panel.wide{max-width:760px}
+.mex .btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.rules summary{cursor:pointer;font-weight:800;color:var(--accent)}
+.rules ul{margin:8px 0 0;padding-left:20px;line-height:1.55;color:var(--muted);font-size:14px}
+.rules b{color:var(--fg)}
+#mGame{display:flex;flex-direction:column;gap:12px;max-width:980px;width:100%;margin:0 auto}
+
+/* ---- dobbelsteen ---- */
+.die{--s:62px;display:inline-grid;grid-template:repeat(3,1fr)/repeat(3,1fr);width:var(--s);height:var(--s);padding:calc(var(--s)*.12);
+  background:linear-gradient(145deg,#fffdf8,#ece4f2);border-radius:calc(var(--s)*.2);box-shadow:inset 0 -4px 0 rgba(0,0,0,.12),0 6px 14px rgba(0,0,0,.45);flex:none}
+.die i{display:block;margin:auto;width:calc(var(--s)*.17);height:calc(var(--s)*.17);border-radius:50%}
+.die i.on{background:#1a1022;box-shadow:inset 0 2px 2px rgba(0,0,0,.5)}
+.die[data-v="1"] i.on{background:var(--hot)}
+.die.blank{opacity:.18}
+.dice{display:flex;gap:16px;justify-content:center}
+.dice.small .die{--s:40px}
+.dice.big .die{--s:min(30vw,150px)}
+.rolling .die{animation:tumble .14s linear infinite}
+.rolling .die:nth-child(2){animation-direction:reverse}
+@keyframes tumble{0%{transform:rotate(0) translateY(0)}50%{transform:rotate(14deg) translateY(-6px)}100%{transform:rotate(-10deg) translateY(0)}}
+@media (prefers-reduced-motion:reduce){.rolling .die{animation:none;opacity:.6}}
+
+/* ---- midden van de tafel ---- */
+.mtbl{height:clamp(360px,56vh,560px)}
+.mcenter{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:8px;width:80%;text-align:center;z-index:5}
+.cscore{font-family:var(--display);font-size:clamp(22px,5vw,34px);line-height:1;min-height:1em;color:var(--fg)}
+.cscore.mex{color:var(--accent);animation:pop .5s cubic-bezier(.3,1.6,.5,1)}
+.cscore.dbl{color:var(--half)}
+.cscore.hot,.cscore.lose{color:var(--hot)}
+.cinfo{font-size:12px;color:var(--muted);font-weight:600}
+@media (max-width:640px){.mcenter .die{--s:48px}.mcenter{width:62%}}
+
+/* ---- poppetjes ---- */
+.sips{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.mres{font-family:var(--mono);font-size:12px;font-weight:800;background:rgba(0,0,0,.35);border-radius:999px;padding:1px 8px;margin-top:2px}
+.mres.done{color:var(--ok)}
+.mres.lose{color:var(--bg);background:var(--hot)}
+.seat.pointable .ava{cursor:pointer;border-color:var(--hot);box-shadow:0 0 0 5px rgba(255,90,122,.3);animation:beat 1s ease-in-out infinite;padding:0;font-size:31px;color:inherit}
+.pointrow{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.pointrow .seg{padding:8px 12px;font-family:var(--body);font-weight:800}
+
+/* ---- alleen dobbelstenen ---- */
+.freedice{background:transparent;border:0;padding:24px 0;display:flex;justify-content:center;cursor:pointer;width:100%}
+.freedice:hover .die{transform:translateY(-3px)}
+.freescore{text-align:center;font-family:var(--display);font-size:clamp(28px,7vw,48px);min-height:1.2em}
+.freescore.mex{color:var(--accent)} .freescore.hot{color:var(--hot)}
+.freehist{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center}
+.chipx{font-family:var(--mono);font-size:13px;border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+.chipx.mex{color:var(--accent);border-color:var(--accent)}
+
+/* ---- testmodus ---- */
+.mprog{margin:4px 0}
+.mprog>i{transform:scaleX(0);transition:transform .1s linear}
+#mTestOut{display:flex;flex-direction:column;gap:10px}
+#mTestOut h3{font-family:var(--display);font-weight:400;font-size:15px;letter-spacing:.04em;color:var(--accent);margin:12px 0 0}
+#mTestOut .tag{margin:0;line-height:1.5;font-size:13px}
+.verdict{font-weight:800;padding:12px 14px;border-radius:10px;background:var(--bg);border:2px solid var(--line)}
+.verdict.ok{border-color:var(--ok)} .verdict.warn{border-color:var(--half)}
+.ttable th small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+.ttable td{font-family:var(--mono);font-weight:500}
+.ttable .ok{color:var(--ok);font-family:var(--body);font-weight:800} .ttable .no{color:var(--hot);font-family:var(--body);font-weight:800}
+.ttable.small{font-size:12px}
+.tchart{width:100%;height:auto;display:block}
+.tchart text{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+.tchart .grid{stroke:var(--line);stroke-width:1}
+.tchart .bar{fill:var(--accent)}
+.tchart .b:hover .bar{fill:var(--half)}
+.tchart .hit{fill:transparent}
+.tchart .exp{stroke:var(--fg);stroke-width:2;stroke-dasharray:4 3}
+.tchart .curve{fill:none;stroke:var(--hot);stroke-width:2}

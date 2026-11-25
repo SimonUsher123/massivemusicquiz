@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Figtree:wght@400;600;800&family=JetBrains+Mono:wght@500&display=swap">
 <link rel="stylesheet" href="presidenten.css">
+<link rel="stylesheet" href="mexen.css">
 <style>
 /* Layout: quiz-show podium — stage left, live scoreboard right; stacks on phones. Single dark "studio" look by choice. */
 :root{
@@ -105,6 +106,7 @@ button.ghost{background:transparent;color:var(--fg);border:2px solid var(--line)
     <nav class="tabs" role="tablist" aria-label="Spellen">
       <button type="button" role="tab" data-tab="quiz">Beukquiz</button>
       <button type="button" role="tab" data-tab="pres">Presidenten</button>
+      <button type="button" role="tab" data-tab="mex">Mexen</button>
     </nav>
     <div class="vol" id="volWrap"><label for="vol">Volume</label><input id="vol" type="range" min="0" max="1" step="0.05" value="0.8"></div>
   </header>
@@ -228,6 +230,77 @@ button.ghost{background:transparent;color:var(--fg);border:2px solid var(--line)
     <div class="toast" id="pToast" role="status" hidden></div>
     <div class="overlay" id="pOverlay" hidden><div class="dialog" id="pDialog" role="dialog" aria-modal="true"></div></div>
   </section>
+
+  <!-- Mexen -->
+  <section class="pres mex" id="mexView" hidden>
+    <div class="panel" id="mSetup">
+      <h2>Online mexen</h2>
+      <p class="tag">Iedereen op een eigen telefoon of computer. Je krijgt een link om te delen; lege plekken vult de computer aan.</p>
+      <div class="online-row">
+        <input type="text" id="mMyName" maxlength="14" placeholder="Jouw naam" aria-label="Jouw naam" autocomplete="nickname">
+        <button type="button" id="mCreate">Maak online spel</button>
+      </div>
+      <hr>
+      <h2>Tegen de computer</h2>
+      <div class="field"><span class="lbl">Aantal spelers</span><div class="seg-row multi" id="mCount"></div></div>
+      <div class="field"><span class="lbl">Levens</span><div class="seg-row multi" id="mLives"></div></div>
+      <button type="button" id="mStart">Start spel</button>
+      <hr>
+      <div class="btns">
+        <button type="button" class="ghost" id="mFreeBtn">🎲 Alleen dobbelstenen</button>
+        <button type="button" class="ghost" id="mTestBtn">📊 Testmodus (1 miljoen worpen)</button>
+      </div>
+      <details class="rules"><summary>Spelregels</summary>
+        <ul>
+          <li>De hoogste steen is het tiental: 6 en 3 = <b>63</b>. Laagste worp is 31.</li>
+          <li>Dubbel is een honderdtal: 1-1 = <b>100</b> … 6-6 = <b>600</b>, hoger dan elke gewone worp.</li>
+          <li><b>2-1 = Mex</b>, de hoogste worp. Elke mex verdubbelt de inzet van de ronde.</li>
+          <li>De voorgooier gooit maximaal 3 keer; zijn aantal worpen is het maximum voor de rest. Je laatste worp telt.</li>
+          <li>De laagste verliest de inzet. Gelijke laagsten gooien één keer af. De verliezer begint de volgende ronde.</li>
+          <li>Op 0 levens ben je af; de laatste die overblijft wint. Bij eindeloos tellen alleen de strafpunten.</li>
+        </ul>
+      </details>
+    </div>
+    <div class="panel" id="mLobby" hidden><div id="mLobbyMain"></div></div>
+    <div id="mGame" hidden>
+      <div class="pbar"><span id="mRound">Ronde 1</span><button type="button" class="ghost mini" id="mQuit">Stoppen</button></div>
+      <div class="tbl mtbl">
+        <div class="felt"><div class="mcenter" id="mCenter"></div><div class="fmsg" id="mMsg" aria-live="polite"></div></div>
+        <div id="mSeats"></div>
+      </div>
+      <div class="dock">
+        <div class="turnbar" id="mTurn" aria-live="polite"></div>
+        <div class="actions" id="mActions"></div>
+      </div>
+      <details class="statsbox" open>
+        <summary>Stand <span id="mStatsN"></span></summary>
+        <div id="mStatsBody"></div>
+      </details>
+      <div class="plog" id="mLog"></div>
+    </div>
+    <div class="panel wide" id="mFree" hidden>
+      <div class="pbar"><span>Alleen dobbelstenen</span><button type="button" class="ghost mini" data-mback>Terug</button></div>
+      <button type="button" class="freedice" id="mFreeDice" aria-label="Gooi de dobbelstenen"></button>
+      <div class="freescore" id="mFreeScore" aria-live="polite">Tik op de stenen om te gooien</div>
+      <div class="freehist" id="mFreeHist"></div>
+    </div>
+    <div class="panel wide" id="mTest" hidden>
+      <div class="pbar"><span>Testmodus</span><button type="button" class="ghost mini" data-mback>Terug</button></div>
+      <p class="tag">Gooit de stenen 1.000.000 keer met precies dezelfde functie als het spel, en toetst of de uitkomsten passen bij eerlijke stenen (99%-betrouwbaarheid).</p>
+      <div class="btns"><button type="button" id="mTestRun">Gooi 1 miljoen keer</button></div>
+      <div class="bar mprog" hidden id="mTestBar"><i id="mTestFill"></i></div>
+      <div id="mTestOut"></div>
+    </div>
+    <div class="chat" id="mChat" hidden>
+      <h3>Chat</h3>
+      <div class="chatlist" id="mChatList" aria-live="polite"></div>
+      <form class="chatform" id="mChatForm" autocomplete="off">
+        <input type="text" id="mChatText" maxlength="200" placeholder="Zeg iets tegen de tafel" aria-label="Chatbericht">
+        <button type="submit">Stuur</button>
+      </form>
+    </div>
+    <div class="toast" id="mToast" role="status" hidden></div>
+  </section>
 </div>
 
 <footer class="appver" id="appVersion"></footer>
@@ -237,5 +310,6 @@ button.ghost{background:transparent;color:var(--fg);border:2px solid var(--line)
 <script src="songs.js"></script>
 <script type="module" src="presidenten.js"></script>
 <script type="module" src="quiz.js"></script>
+<script type="module" src="mexen.js"></script>
 </body>
 </html>
