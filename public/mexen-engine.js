@@ -25,7 +25,7 @@
 // De spelstand G is gewone JSON (de server bewaart hem). Tijd komt altijd van buiten (`now`): wat er straks
 // vanzelf moet gebeuren (een computer die gooit, de volgende ronde) staat als tijdstip in G.wait.
 
-export const VERSION = "1.7.2";
+export const VERSION = "1.7.3";
 export const AVATARS = ["😎", "🧔", "👩‍🦰", "👴", "🧑‍🎤", "🤠", "👵", "🧙"];
 export const BOT_NAMES = ["Henk", "Ingrid", "Kees", "Fleur", "Joop", "Mien", "Sjaak", "Truus"];
 export const MIN = 2, MAX = 8;

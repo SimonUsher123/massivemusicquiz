@@ -57,7 +57,12 @@ const audio=$("audio");audio.volume=.8;
 $("vol").addEventListener("input",e=>audio.volume=+e.target.value);
 let catKey=null,order=[],loadToken=0,roundNo=0;
 
-function show(id){["pick","ready","game","end","qLobby","qWait"].forEach(x=>$(x).hidden=x!==id)}
+function show(id){["pick","ready","game","end","qLobby","qWait"].forEach(x=>$(x).hidden=x!==id);
+  const lobby=id==="qLobby";document.querySelector("#quizView .board").hidden=lobby;
+  // de chat verhuist mee (zelfde element, dus half getypte tekst blijft staan)
+  if(lobby)$("qLobby").appendChild($("qChat"));else document.querySelector("#quizView .board").appendChild($("qChat"))}
+// wachtruimte opnieuw tekenen zonder de chat weg te gooien
+function lobbyHTML(h){const c=$("qChat");document.querySelector("#quizView .board").appendChild(c);$("qLobby").innerHTML=h;if(!$("qLobby").hidden)$("qLobby").appendChild(c)}
 function renderCats(){
   $("cats").innerHTML=Object.entries(CATEGORIES).map(([k,c])=>`<button class="cat" data-k="${k}"><b>${c.name}</b><span>${c.songs.length} nummers</span></button>`).join("");
   $("cats").querySelectorAll(".cat").forEach(b=>b.onclick=()=>Q?qChoose(b.dataset.k):chooseCategory(b.dataset.k));
@@ -217,7 +222,7 @@ function qConnect(code,create){
   stopLocal();if(Q)qLeave(null,true);
   Q={code,create,ws:null,lobby:null,st:null,offset:0,timer:null,typed:new Set(),typedK:-1,audioK:-1,retry:0,closed:false,ping:null,chat:[],humans:1};
   history.replaceState(null,"",`?quiz=${code}`);
-  show("qLobby");$("qLobby").innerHTML=`<h2>Verbinden…</h2>`;
+  show("qLobby");lobbyHTML(`<h2>Verbinden…</h2>`);
   $("qOnline").hidden=true;
   qOpen();
 }
@@ -261,7 +266,7 @@ function qRenderLobby(){
   const L=Q.lobby,url=shareUrl(L.code),n=Math.max(1,L.n,L.seats.length),bots=Math.max(0,n-L.seats.length);
   const seats=L.seats.map(s=>`<li><b>${esc(s.name)}</b>${s.you?' <span class="badge">jij</span>':""}${s.host?' <span class="badge">host</span>':""}${s.online?"":' <span class="badge off">weg</span>'}</li>`).join("");
   const counts=[1,2,3,4,5,6,7,8].filter(k=>k>=L.seats.length).map(k=>`<button type="button" class="seg${n===k?" on":""}" data-q="n" data-n="${k}" aria-pressed="${n===k}">${k}</button>`).join("");
-  $("qLobby").innerHTML=`<h2>Online quiz <span class="code">${esc(L.code)}</span></h2>
+  lobbyHTML(`<h2>Online quiz <span class="code">${esc(L.code)}</span></h2>
     <div class="share"><input type="text" readonly value="${esc(url)}" aria-label="Link naar deze quiz"><button type="button" data-q="share">Deel link</button></div>
     <label class="opt">Jouw naam <input type="text" id="qLobbyName" maxlength="14" value="${esc(myName())}"></label>
     <ol class="lplayers">${seats}${bots?`<li class="bots">+ ${bots} computer${bots>1?"s":""}</li>`:""}</ol>
@@ -269,7 +274,7 @@ function qRenderLobby(){
       <label class="phone"><input type="checkbox" data-q="phone"${L.phone?" checked":""}> Telefoonmodus (computers typen 40% langzamer)</label>
       <button type="button" data-q="start">Start de quiz</button>`
       :`<p class="tag">Wachten tot ${esc(L.hostName||"de host")} de quiz start…${L.phone?" Telefoonmodus staat aan.":""}</p>`}
-    <button type="button" class="ghost" data-q="leave">Verlaten</button>`;
+    <button type="button" class="ghost" data-q="leave">Verlaten</button>`);
 }
 $("qLobby").addEventListener("click",async e=>{
   const b=e.target.closest("[data-q]");if(!b||!Q)return;
@@ -288,9 +293,9 @@ $("qLobby").addEventListener("change",e=>{
 });
 function qAskName(code){
   show("qLobby");$("qOnline").hidden=true;
-  $("qLobby").innerHTML=`<h2>Meedoen met quiz <span class="code">${esc(code)}</span></h2>
+  lobbyHTML(`<h2>Meedoen met quiz <span class="code">${esc(code)}</span></h2>
     <label class="opt">Jouw naam <input type="text" id="qJoinName" maxlength="14" value="${esc(myName())}" autocomplete="nickname"></label>
-    <div class="btns"><button type="button" id="qJoinGo">Meedoen</button><button type="button" class="ghost" id="qJoinCancel">Annuleren</button></div>`;
+    <div class="btns"><button type="button" id="qJoinGo">Meedoen</button><button type="button" class="ghost" id="qJoinCancel">Annuleren</button></div>`);
   const go=()=>{const n=$("qJoinName").value.trim();if(!n){$("qJoinName").focus();return}setMyName(n);unlock();qConnect(code,false)};
   $("qJoinGo").onclick=go;$("qJoinName").onkeydown=e=>{if(e.key==="Enter")go()};
   $("qJoinCancel").onclick=()=>{history.replaceState(null,"",location.pathname);$("qOnline").hidden=false;show("pick")};
@@ -384,7 +389,11 @@ function qEnd(){
 }
 
 // --- chat (als er meer dan één mens meedoet) ---
-function qChatArrived(list){Q.chat=list;const box=$("qChat");box.hidden=!(Q.humans>1);if(box.hidden)return;
+function qChatArrived(list){
+  const last=list.length?list[list.length-1].id:0;
+  if(Q.chatSeen!=null){const me=myName().toLowerCase();list.filter(c=>c.id>Q.chatSeen&&c.name.toLowerCase()!==me).slice(-1).forEach(c=>qToast(`💬 ${c.name}: ${c.text}`))}
+  Q.chatSeen=last;
+  Q.chat=list;const box=$("qChat");box.hidden=!(Q.humans>1);if(box.hidden)return;
   const el=$("qChatList"),atEnd=el.scrollHeight-el.scrollTop-el.clientHeight<30;
   el.innerHTML=list.map(c=>`<div><b>${esc(c.name)}</b> ${esc(c.text)}</div>`).join("")||'<div class="tag">Nog geen berichten.</div>';
   if(atEnd)el.scrollTop=el.scrollHeight;
