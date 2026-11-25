@@ -68,7 +68,7 @@ $("pQuit").onclick=()=>{
   stopLocal();showPanel("setup");
 };
 renderSetup();
-document.querySelectorAll(".pversion").forEach(e=>e.textContent=`versie ${VERSION}`);
+$("appVersion").textContent=`versie ${VERSION}`;   // onderaan elke pagina
 
 // ---------- Sessie ----------
 // S: {mode:"local",G,base,viewer,timer} of {mode:"online",code,ws,V,lobby,host,online,botified,...}

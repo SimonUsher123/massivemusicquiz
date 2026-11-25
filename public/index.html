@@ -76,6 +76,7 @@ button.ghost{background:transparent;color:var(--fg);border:2px solid var(--line)
 .phone{display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer}
 .phone input{width:20px;height:20px;accent-color:var(--accent)}
 .vol{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px}
+.appver{text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);padding:18px 0 4px}
 .online-box{display:flex;flex-direction:column;gap:12px;margin-bottom:18px}
 .online-box hr{border:0;border-top:1px solid var(--line);margin:6px 0 0;width:100%}
 .online-box .tag{margin:0;line-height:1.5}
@@ -195,11 +196,10 @@ button.ghost{background:transparent;color:var(--fg);border:2px solid var(--line)
       <div class="field"><span class="lbl">Aantal spelers</span><div class="seg-row" id="pCount"></div></div>
       <div class="field col"><span class="lbl">Computers spelen</span><div class="seg-row multi" id="pStyle"></div></div>
       <button type="button" id="pStart">Start spel</button>
-      <p class="pversion"></p>
     </div>
     <div class="panel" id="pLobby" hidden><div id="lobbyMain"></div></div>
     <div id="pGame" hidden>
-      <div class="pbar"><span id="pRound">Ronde 1</span><span class="pbar-r"><span class="pversion"></span><button type="button" class="ghost mini" id="pQuit">Stoppen</button></span></div>
+      <div class="pbar"><span id="pRound">Ronde 1</span><button type="button" class="ghost mini" id="pQuit">Stoppen</button></div>
       <div class="tbl">
         <div class="felt"><div class="pile" id="pPile"></div><div class="fmsg" id="pMsg" aria-live="polite"></div></div>
         <div id="pSeats"></div>
@@ -229,6 +229,8 @@ button.ghost{background:transparent;color:var(--fg);border:2px solid var(--line)
     <div class="overlay" id="pOverlay" hidden><div class="dialog" id="pDialog" role="dialog" aria-modal="true"></div></div>
   </section>
 </div>
+
+<footer class="appver" id="appVersion"></footer>
 
 <audio id="audio" preload="auto" playsinline></audio>
 
